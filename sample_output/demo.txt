@@ -1,0 +1,82 @@
+Enter PDF path: C:\Users\Meghna Tomar\Downloads\Ghostworker.pdf
+
+========== PDF LOADED ==========
+Pages: 11
+Characters extracted: 4861
+Chunks created: 5
+================================
+
+
+Available Commands:
+ summary      -> Summarize document
+ overview     -> High-level overview
+ purpose      -> Main objective of document
+ features     -> Extract key features
+ architecture -> System architecture
+ techstack    -> Technologies used
+ usecases     -> Business use cases
+ benefits     -> Benefits and advantages
+ future       -> Future enhancements
+ keywords     -> Important keywords
+ stats        -> Document statistics
+ chunks       -> Chunk information
+ help         -> Show commands
+ exit         -> Quit
+
+You may also ask any natural-language question.
+
+Ask a question: stats
+
+========== DOCUMENT STATS ==========
+Pages: 11
+Characters: 4861
+Chunks: 5
+
+Ask a question: help
+summary, overview, purpose, features, architecture
+techstack, usecases, benefits, future, keywords
+stats, chunks, help, exit
+
+Ask a question: future
+
+Retrieved Context Size: 3002
+
+========== ANSWER ==========
+
+Future Enhancements:
+
+1. Voice-enabled AI
+
+Future Scope:
+
+1. Build a scalable AI workforce platform to automate repetitive office operations across industries.
+2. Automating Repetitive Work.
+3. Accelerating Human Productivity.
+
+============================
+Response generated in 68.70 seconds
+
+Ask a question: keywords
+
+Retrieved Context Size: 3002
+
+========== ANSWER ==========
+
+The most important keywords extracted from the document are:
+
+1. GhostWorker AI
+2. Automation
+3. Artificial Intelligence (AI)
+4. Workforce automation
+5. Document-driven workflows
+7. Scalability
+8. Efficiency
+9. Productivity
+10. Workflow automation
+
+============================
+Response generated in 44.77 seconds
+
+Ask a question: exit
+
+Goodbye!
