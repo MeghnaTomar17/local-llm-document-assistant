@@ -49,24 +49,17 @@ The application allows users to upload PDF documents, ask questions about their 
 
 ## Project Workflow
 
-PDF Document
-↓
-PyPDF Extraction
-↓
-Text Processing
-↓
-Chunk Generation
-↓
-Keyword-Based Retrieval
-↓
-Context Selection
-↓
-Ollama API
-↓
-Llama 3.2
-↓
-Response Generation
-
+```mermaid
+flowchart TD
+    A[PDF Document] --> B[PyPDF Extraction]
+    B --> C[Text Processing]
+    C --> D[Chunk Generation]
+    D --> E[Keyword-Based Retrieval]
+    E --> F[Context Selection]
+    F --> G[Ollama API]
+    G --> H[Llama 3.2]
+    H --> I[Response Generation]
+```
 ---
 
 ## Commands
