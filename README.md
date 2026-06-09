@@ -1,186 +1,125 @@
 # Local LLM Document Assistant
 
-A Python-based document intelligence assistant powered by a locally hosted LLM using Ollama and Llama 3.2.
+A local document intelligence assistant powered by Ollama, Llama 3.2, semantic RAG, FastAPI, and React.
 
-The application allows users to upload PDF documents, ask questions about their content, generate summaries, extract key information, and perform document analysis entirely on their local machine without relying on cloud-based AI services.
+The project still supports the Streamlit app, PDF/DOC/DOCX upload, chunking, question answering, quick actions, chat, document statistics, and response timing. It now adds conversational memory, source attribution, document preview, chat export, retrieval diagnostics, and FAISS-backed semantic search.
 
----
+## What Changed
 
-## Features
+### Phase 1: Advanced Document Intelligence
 
-### Local LLM Integration
+* Recent chat history is included in prompts for follow-up questions.
+* Assistant responses include source chunks, chunk count, context size, prompt size, sections, and similarity diagnostics.
+* Uploaded document text preview is available in an expandable panel.
+* Chat can be exported as TXT with timestamps and user/assistant messages.
 
-* Ollama-based local deployment
-* Llama 3.2 model execution
-* Offline document analysis
+### Phase 2: Real RAG
 
-### PDF Processing
+* Retrieval now uses `sentence-transformers` embeddings.
+* Chunk vectors are stored in an in-process FAISS index.
+* Similarity search retrieves the top relevant chunks before calling Ollama.
+* The assistant is intentionally single-document: uploading a new document resets FAISS, chunk metadata, retrieval diagnostics, and chat history.
 
-* Dynamic PDF loading
-* Text extraction using PyPDF
-* Multi-page document support
+### Phase 3: Production Architecture
 
-### Document Intelligence
+New structure:
 
-* Document summarization
-* Question answering
-* Architecture analysis
-* Feature extraction
-* Technology stack identification
-* Use case analysis
-* Future scope extraction
-* Keyword extraction
+```text
+backend/
+  api/
+  services/
+  rag/
+  models/
+  uploads/
+  main.py
 
-### Retrieval System
-
-* Document chunking
-* Keyword-based retrieval
-* Context selection
-* Reduced prompt size
-
-### Performance Monitoring
-
-* Response generation timing
-* Page count tracking
-* Character count tracking
-* Chunk statistics
-
----
-
-## Project Workflow
-
-```mermaid
-flowchart TD
-    A[PDF Document] --> B[PyPDF Extraction]
-    B --> C[Text Processing]
-    C --> D[Chunk Generation]
-    D --> E[Keyword-Based Retrieval]
-    E --> F[Context Selection]
-    F --> G[Ollama API]
-    G --> H[Llama 3.2]
-    H --> I[Response Generation]
-```
----
-
-## Commands
-
-| Command      | Description                  |
-| ------------ | ---------------------------- |
-| summary      | Generate document summary    |
-| overview     | Generate high-level overview |
-| purpose      | Identify document objective  |
-| features     | Extract key features         |
-| architecture | Explain architecture         |
-| techstack    | Extract technologies used    |
-| usecases     | Extract business use cases   |
-| benefits     | Identify advantages          |
-| future       | Future enhancements          |
-| keywords     | Important keywords           |
-| stats        | Display document statistics  |
-| chunks       | Display chunk information    |
-| help         | Show commands                |
-| exit         | Exit application             |
-
-Users can also ask custom natural-language questions.
-
----
-
-## Installation
-
-### Clone Repository
-
-```bash
-git clone <repository-url>
-cd LocalLLM-Document-Assistant
+frontend/
+  src/
+    components/
+    pages/
+    services/
+    App.jsx
 ```
 
-### Create Virtual Environment
+Implemented APIs:
+
+* `POST /upload`
+* `POST /ask`
+* `GET /stats`
+* `GET /chat-history`
+* `POST /clear-chat`
+
+## Install
 
 ```bash
 python -m venv venv
-```
-
-### Activate Environment
-
-Windows:
-
-```bash
 .\venv\Scripts\Activate.ps1
-```
-
-### Install Dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
----
-
-## Install Ollama
-
-Download and install Ollama.
-
-Verify installation:
+Install and run Ollama:
 
 ```bash
-ollama --version
+ollama pull llama3.2:3b
+ollama serve
 ```
 
-Pull the model:
+The first semantic indexing run downloads the `all-MiniLM-L6-v2` embedding model.
+
+## Run Streamlit App
 
 ```bash
-ollama run llama3.2:3b
+streamlit run app.py
 ```
 
----
-
-## Run Application
+## Run FastAPI Backend
 
 ```bash
-python pdf_reader.py
+uvicorn backend.main:app --reload
 ```
 
-Provide the PDF path when prompted.
-
-Example:
+Backend URL:
 
 ```text
-Enter PDF path:
-C:\Users\Meghna Tomar\Downloads\Ghostworker.pdf
+http://localhost:8000
 ```
 
----
+## Run React Frontend
 
-## Sample Output
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend URL:
 
 ```text
-Pages: 11
-Characters Extracted: 4861
-Chunks Created: 5
-
-Ask a question:
-features
+http://localhost:5173
 ```
 
-Output:
+Set `VITE_API_URL` if the backend runs somewhere else.
 
-```text
-Multi-agent AI workforce
-OCR extraction
-Validation engine
-Browser automation
-Workflow dashboard
-Automated communication
-```
+## Migration Notes
 
----
+* `pdf_processor.py` is the shared document and RAG engine used by both Streamlit and FastAPI.
+* The old keyword retrieval path has been replaced by FAISS similarity search.
+* Chat history is stored in process memory for now. Use a database or session store before deploying to multiple users.
+* The FAISS index is process-local and single-document in this version. Re-upload documents after restarting the backend or Streamlit process.
+* Uploaded files are saved under `uploads/` for Streamlit and `backend/uploads/` for FastAPI.
+* DOC conversion still requires LibreOffice and the `soffice` command.
 
-## Technologies Used
+## Technologies
 
 * Python
 * Ollama
 * Llama 3.2
+* FastAPI
+* Streamlit
+* React
+* Vite
+* Axios
+* sentence-transformers
+* FAISS
 * PyPDF
-* Requests
-
----
+* python-docx

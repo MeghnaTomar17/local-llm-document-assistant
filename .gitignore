@@ -1,17 +1,27 @@
-# Virtual Environment
-venv/
-.venv/
-
 # Python
+venv/
 __pycache__/
 *.pyc
-*.pyo
 
-# VS Code
-.vscode/
+# Streamlit
+.streamlit/
+
+# Uploads
+uploads/
+backend/uploads/
+
+# Vector Index / Local Data
+faiss_index*
+*.index
 
 # Environment Variables
 .env
+
+# Node
+frontend/node_modules/
+
+# VS Code
+.vscode/
 
 # OS Files
 .DS_Store
