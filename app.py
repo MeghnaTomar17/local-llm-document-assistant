@@ -17,17 +17,23 @@ from pdf_processor import (
 UPLOAD_DIR = Path("uploads")
 
 QUICK_ACTIONS = {
-    "Summary": "Provide a detailed summary of this document.",
-    "Features": "List all key features and capabilities described.",
-    "Architecture": "Explain the system architecture described in the document.",
-    "Tech Stack": "List all technologies, frameworks, APIs, databases and tools mentioned.",
-    "Use Cases": "List all use cases and applications mentioned.",
-    "Future Scope": "List future enhancements and future scope discussed.",
+    "Resume Summary": "Summarize the resume.",
+    "Contact Information": "Show contact information from the resume.",
+    "Skills": "Show skills from the resume.",
+    "Technical Skills": "Show technical skills from the resume.",
+    "Education": "Show education from the resume.",
+    "Experience": "Show experience from the resume.",
+    "Projects": "Show projects from the resume.",
+    "Certifications": "Show certifications from the resume.",
+    "Achievements": "Show achievements from the resume.",
+    "Languages": "Show languages from the resume.",
+    "Career Highlights": "List the career highlights from the resume.",
+    "Recruiter Summary": "Write a concise recruiter summary using only the resume.",
 }
 
 
 st.set_page_config(
-    page_title="Local LLM Document Assistant",
+    page_title="Resume Intelligence Assistant",
     layout="wide",
 )
 
@@ -98,6 +104,7 @@ def initialize_state():
         "processing": False,
         "last_retrieval": None,
         "upload_notice": None,
+        "debug_mode": False,
     }
 
     for key, value in defaults.items():
@@ -137,7 +144,7 @@ def display_stats(document):
     )
 
     if document["page_count"] is None:
-        st.caption("Page count is available for PDFs. Word documents do not expose reliable page counts until rendered.")
+        st.caption("Page count is available for PDFs. DOCX resumes do not expose reliable page counts until rendered.")
 
 
 def ask_question(question):
@@ -145,7 +152,7 @@ def ask_question(question):
         return
 
     if not st.session_state.document:
-        st.error("Upload a supported document before asking a question.")
+        st.error("Upload a supported resume before asking a question.")
         return
 
     st.session_state.messages.append(
@@ -189,10 +196,10 @@ def ask_question(question):
 initialize_state()
 
 if st.session_state.processing:
-    st.warning("⏳ Processing request. Please wait...")
+    st.warning("Processing request. Please wait...")
 
 st.sidebar.title("Quick Actions")
-st.sidebar.caption("Run focused prompts on the uploaded document.")
+st.sidebar.caption("Run focused prompts on the uploaded resume.")
 
 for label, prompt in QUICK_ACTIONS.items():
     if st.sidebar.button(label, use_container_width=True, disabled=(st.session_state.document is None or st.session_state.processing)):
@@ -207,20 +214,25 @@ if st.session_state.messages:
     st.sidebar.download_button(
         "Export Chat TXT",
         data=export_chat(st.session_state.messages),
-        file_name="local-llm-chat-export.txt",
+        file_name="resume-intelligence-chat-export.txt",
         mime="text/plain",
         use_container_width=True,
     )
 
-st.markdown('<div class="app-title">Local LLM Document Assistant</div>', unsafe_allow_html=True)
+st.session_state.debug_mode = st.sidebar.checkbox(
+    "Developer debug mode",
+    value=st.session_state.debug_mode,
+)
+
+st.markdown('<div class="app-title">Resume Intelligence Assistant</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="app-subtitle">Upload a document, inspect its stats, and ask questions using your local Ollama model.</div>',
+    '<div class="app-subtitle">Upload a resume, inspect its stats, and ask questions using your local Ollama model.</div>',
     unsafe_allow_html=True,
 )
 
 uploaded_file = st.file_uploader(
-    "Upload a document",
-    type=["pdf", "doc", "docx"],
+    "Upload a resume",
+    type=["pdf", "docx"],
     accept_multiple_files=False,
     disabled=st.session_state.processing,
 )
@@ -229,19 +241,19 @@ if uploaded_file:
     extension = Path(uploaded_file.name).suffix.lower()
 
     if extension not in ALLOWED_EXTENSIONS:
-        st.error("Unsupported file type. Please upload only PDF, DOC, or DOCX files.")
+        st.error("Unsupported file type. Please upload only PDF or DOCX resumes.")
     elif uploaded_file.name != st.session_state.uploaded_file_name:
         try:
-            had_previous_document = st.session_state.document is not None
+            had_previous_resume = st.session_state.document is not None
             saved_path = save_uploaded_file(uploaded_file)
             validate_file_type(saved_path)
-            st.session_state.document = process_document(saved_path)
+            st.session_state.document = process_document(saved_path, document_name=uploaded_file.name)
             st.session_state.uploaded_file_name = uploaded_file.name
             st.session_state.messages = []
             st.session_state.last_retrieval = None
             st.session_state.upload_notice = (
-                "New document detected. Previous document context has been cleared."
-                if had_previous_document
+                "New resume detected. Previous resume context has been cleared."
+                if had_previous_resume
                 else None
             )
             st.success(f"Loaded {uploaded_file.name}")
@@ -251,14 +263,14 @@ if uploaded_file:
             st.session_state.uploaded_file_name = None
             st.session_state.messages = []
             st.session_state.last_retrieval = None
-            st.error(f"Could not process the uploaded file: {exc}")
+            st.error(f"Could not process the uploaded resume: {exc}")
 
 if st.session_state.document:
-    st.info(f"Current Document: {st.session_state.document['name']}")
+    st.info(f"Current Resume: {st.session_state.document['name']}")
     if st.session_state.upload_notice:
         st.success(st.session_state.upload_notice)
     display_stats(st.session_state.document)
-    with st.expander("Document Preview", expanded=False):
+    with st.expander("Resume Preview", expanded=False):
         st.text_area(
             "Extracted text preview",
             value=st.session_state.document["preview"],
@@ -266,6 +278,43 @@ if st.session_state.document:
             disabled=True,
             label_visibility="collapsed",
         )
+
+    if st.session_state.debug_mode:
+        with st.expander("Developer Debug", expanded=False):
+            st.subheader("Extracted Text")
+            st.text_area(
+                "Extracted resume text",
+                value=st.session_state.document.get("text", ""),
+                height=220,
+                label_visibility="collapsed",
+            )
+
+            st.subheader("Generated Chunks")
+            st.json(
+                [
+                    {
+                        "chunk_id": chunk.get("chunk_id"),
+                        "chunk_number": chunk.get("chunk_number"),
+                        "section": chunk.get("section"),
+                        "title": chunk.get("title"),
+                        "page": chunk.get("page"),
+                        "size": chunk.get("size"),
+                        "content": chunk.get("content"),
+                    }
+                    for chunk in st.session_state.document.get("chunks", [])
+                ]
+            )
+
+            st.subheader("Retrieved Chunks")
+            st.json(st.session_state.last_retrieval.get("chunks", []) if st.session_state.last_retrieval else [])
+
+            st.subheader("Final Context Sent to LLM")
+            st.text_area(
+                "Final context",
+                value=st.session_state.last_retrieval.get("context", "") if st.session_state.last_retrieval else "",
+                height=220,
+                label_visibility="collapsed",
+            )
 
 st.divider()
 
@@ -282,14 +331,15 @@ for message in st.session_state.messages:
             retrieval = message.get("retrieval")
             if retrieval:
                 chunk_numbers = [
-                    f"{chunk['document_name']} #{chunk['chunk_number']}"
+                    f"{chunk['section']} | Chunk {chunk['chunk_number']} | Page {chunk.get('page') or 'N/A'}"
                     for chunk in retrieval["chunks"]
                 ]
                 st.caption(
-                    f"Sources: {', '.join(chunk_numbers)} | "
+                    f"Retrieved: {', '.join(chunk_numbers)} | "
                     f"Chunks used: {retrieval['chunk_count']} | "
                     f"Context size: {retrieval['context_size']:,} characters | "
-                    f"Prompt size: {message.get('prompt_size', 0):,} characters"
+                    f"Prompt size: {message.get('prompt_size', 0):,} characters | "
+                    f"Strategy: {retrieval.get('strategy', 'semantic')}"
                 )
                 with st.expander("Retrieval Diagnostics", expanded=False):
                     for chunk in retrieval["chunks"]:
@@ -298,13 +348,15 @@ for message in st.session_state.messages:
                         st.markdown(
                             f"**{chunk['document_name']} - Chunk {chunk['chunk_number']}**  \n"
                             f"Section: {chunk['section']}  \n"
+                            f"Title: {chunk.get('title') or chunk['section']}  \n"
+                            f"Page: {chunk.get('page') or 'N/A'}  \n"
                             f"Size: {chunk['size']:,} characters  \n"
                             f"Similarity: {score}"
                         )
-                        st.text(chunk["text"][:900])
+                        st.text(chunk.get("content", chunk["text"])[:900])
 
 question = st.chat_input(
-    "Ask a question about the uploaded document",
+    "Ask a question about the uploaded resume",
     disabled=st.session_state.processing,
 )
 

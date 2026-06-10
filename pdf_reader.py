@@ -5,25 +5,27 @@ from pdf_processor import ask_llm, process_document
 
 
 COMMANDS = {
-    "summary": "Provide a detailed summary of this document.",
-    "overview": "Give a high level overview of this document.",
-    "purpose": "What is the main purpose and objective of this document?",
-    "features": "List all key features and capabilities described.",
-    "architecture": "Explain the system architecture described in the document.",
-    "techstack": "List all technologies, frameworks, APIs, databases and tools mentioned.",
-    "usecases": "List all use cases and applications mentioned.",
-    "benefits": "List the benefits and advantages of the proposed solution.",
-    "future": "List future enhancements and future scope discussed.",
-    "keywords": "Extract the most important keywords from the document.",
+    "summary": "Summarize the resume.",
+    "contact": "Show contact information from the resume.",
+    "skills": "Show skills from the resume.",
+    "technical": "Show technical skills from the resume.",
+    "education": "Show education from the resume.",
+    "experience": "Show experience from the resume.",
+    "projects": "Show projects from the resume.",
+    "certifications": "Show certifications from the resume.",
+    "achievements": "Show achievements from the resume.",
+    "languages": "Show languages from the resume.",
+    "highlights": "List the career highlights from the resume.",
+    "recruiter": "Write a concise recruiter summary using only the resume.",
 }
 
 
 def main():
-    document_path = input("Enter PDF/DOC/DOCX path: ").strip().strip('"')
+    document_path = input("Enter PDF/DOCX resume path: ").strip().strip('"')
     document = process_document(document_path)
     messages = []
 
-    print("\n========== DOCUMENT LOADED ==========")
+    print("\n========== RESUME LOADED ==========")
     print(f"Name: {document['name']}")
     print(f"Pages: {document['page_count'] or 'N/A'}")
     print(f"Characters extracted: {document['character_count']}")
@@ -49,7 +51,7 @@ def main():
             continue
 
         if command == "stats":
-            print("\n========== DOCUMENT STATS ==========")
+            print("\n========== RESUME STATS ==========")
             print(f"Pages: {document['page_count'] or 'N/A'}")
             print(f"Characters: {document['character_count']}")
             print(f"Chunks: {document['chunk_count']}")
@@ -58,7 +60,10 @@ def main():
         if command == "chunks":
             print("\n========== CHUNK INFO ==========")
             for chunk in document["chunks"]:
-                print(f"Chunk {chunk['chunk_number']}: {chunk['size']} characters | {chunk['section']}")
+                print(
+                    f"Chunk {chunk['chunk_number']}: {chunk['size']} characters | "
+                    f"{chunk['section']} | {chunk['title']} | Page {chunk['page'] or 'N/A'}"
+                )
             continue
 
         question = COMMANDS.get(command, question)
@@ -92,9 +97,13 @@ def main():
         print(f"Chunks used: {result['retrieval']['chunk_count']}")
         print(f"Context size: {result['retrieval']['context_size']} characters")
         for chunk in result["retrieval"]["chunks"]:
-            similarity = chunk["similarity"]
+            similarity = chunk.get("similarity")
             score = f"{similarity:.3f}" if similarity is not None else "N/A"
-            print(f"- {chunk['document_name']} chunk {chunk['chunk_number']} | {chunk['section']} | similarity {score}")
+            print(
+                f"- {chunk['document_name']} chunk {chunk['chunk_number']} | "
+                f"{chunk['section']} | {chunk.get('title') or chunk['section']} | "
+                f"Page {chunk.get('page') or 'N/A'} | similarity {score}"
+            )
         print(f"\nResponse generated in {elapsed:.2f} seconds")
 
 

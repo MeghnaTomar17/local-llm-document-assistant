@@ -14,19 +14,28 @@ import {
 import {
   askQuestion,
   clearChat,
+  getDebugData,
+  getSessions,
   getChatHistory,
   getStats,
+  switchSession,
   uploadDocument,
 } from "./services/api";
 import "./styles.css";
 
 const quickActions = [
-  ["Summary", "Provide a detailed summary of this document."],
-  ["Features", "List all key features and capabilities described."],
-  ["Architecture", "Explain the system architecture described in the document."],
-  ["Tech Stack", "List all technologies, frameworks, APIs, databases and tools mentioned."],
-  ["Use Cases", "List all use cases and applications mentioned."],
-  ["Future Scope", "List future enhancements and future scope discussed."],
+  ["Resume Summary", "Summarize the resume."],
+  ["Contact Information", "Show contact information from the resume."],
+  ["Skills", "Show skills from the resume."],
+  ["Technical Skills", "Show technical skills from the resume."],
+  ["Education", "Show education from the resume."],
+  ["Experience", "Show experience from the resume."],
+  ["Projects", "Show projects from the resume."],
+  ["Certifications", "Show certifications from the resume."],
+  ["Achievements", "Show achievements from the resume."],
+  ["Languages", "Show languages from the resume."],
+  ["Career Highlights", "List the career highlights from the resume."],
+  ["Recruiter Summary", "Write a concise recruiter summary using only the resume."],
 ];
 
 function App() {
@@ -36,6 +45,10 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [uploadNotice, setUploadNotice] = useState("");
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(null);
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugData, setDebugData] = useState(null);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -44,29 +57,45 @@ function App() {
   }, []);
 
   async function refresh() {
-    const [nextStats, nextMessages] = await Promise.all([getStats(), getChatHistory()]);
+    const [nextStats, nextMessages, sessionData] = await Promise.all([
+      getStats(activeSessionId),
+      getChatHistory(activeSessionId),
+      getSessions(),
+    ]);
     setStats(nextStats);
     setMessages(nextMessages);
+    setSessions(sessionData.sessions || []);
+    setActiveSessionId(nextStats.active_session_id || sessionData.active_session_id || null);
+    if (debugMode) {
+      const nextDebugData = await getDebugData(activeSessionId);
+      setDebugData(nextDebugData);
+    }
   }
 
   async function handleUpload(file) {
     if (!file) return;
-    if (!/\.(pdf|doc|docx)$/i.test(file.name)) {
-      setError("Upload a PDF, DOC, or DOCX file.");
+    if (!/\.(pdf|docx)$/i.test(file.name)) {
+      setError("Upload a PDF or DOCX resume.");
       return;
     }
 
     setBusy(true);
     setError("");
     try {
-      const hadPreviousDocument = Boolean(stats?.document_count);
-      await uploadDocument(file);
-      await refresh();
-      setUploadNotice(
-        hadPreviousDocument
-          ? "New document detected. Previous document context has been cleared."
-          : ""
-      );
+      const result = await uploadDocument(file);
+      setActiveSessionId(result.session_id);
+      const [nextStats, nextMessages, sessionData] = await Promise.all([
+        getStats(result.session_id),
+        getChatHistory(result.session_id),
+        getSessions(),
+      ]);
+      setStats(nextStats);
+      setMessages(nextMessages);
+      setSessions(sessionData.sessions || []);
+      if (debugMode) {
+        setDebugData(await getDebugData(result.session_id));
+      }
+      setUploadNotice(result.message || "New resume session created.");
     } catch (err) {
       setError(err.response?.data?.detail || err.message);
     } finally {
@@ -87,7 +116,7 @@ function App() {
     ]);
 
     try {
-      await askQuestion(trimmed);
+      await askQuestion(trimmed, activeSessionId);
       await refresh();
     } catch (err) {
       setError(err.response?.data?.detail || err.message);
@@ -99,8 +128,9 @@ function App() {
   async function handleClearChat() {
     setBusy(true);
     try {
-      await clearChat();
+      await clearChat(activeSessionId);
       setMessages([]);
+      await refresh();
     } finally {
       setBusy(false);
     }
@@ -119,6 +149,29 @@ function App() {
   const documents = stats?.documents || [];
   const activeDocument = documents[documents.length - 1];
 
+  async function handleSwitchSession(sessionId) {
+    if (!sessionId || sessionId === activeSessionId || busy) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      const result = await switchSession(sessionId);
+      setActiveSessionId(result.active_session_id);
+      setStats(result.stats);
+      setMessages(result.messages || []);
+      const sessionData = await getSessions();
+      setSessions(sessionData.sessions || []);
+      if (debugMode) {
+        setDebugData(await getDebugData(result.active_session_id));
+      }
+      setUploadNotice("");
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -126,7 +179,7 @@ function App() {
           <FileText size={26} />
           <div>
             <h1>Local LLM</h1>
-            <p>Document Assistant</p>
+            <p>Resume Intelligence</p>
           </div>
         </div>
 
@@ -145,12 +198,12 @@ function App() {
           onClick={() => fileInputRef.current?.click()}
         >
           <UploadCloud size={30} />
-          <strong>Drop document</strong>
-          <span>PDF, DOC, DOCX</span>
+          <strong>Drop resume</strong>
+          <span>PDF, DOCX</span>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.doc,.docx"
+            accept=".pdf,.docx"
             onChange={(event) => handleUpload(event.target.files[0])}
           />
         </section>
@@ -163,16 +216,49 @@ function App() {
             </button>
           ))}
         </div>
+
+        {sessions.length > 0 && (
+          <section className="session-list">
+            <h2>Resume Sessions</h2>
+            {sessions.map((session) => (
+              <button
+                key={session.session_id}
+                className={session.session_id === activeSessionId ? "is-active" : ""}
+                onClick={() => handleSwitchSession(session.session_id)}
+                disabled={busy}
+              >
+                <FileText size={15} />
+                <span title={session.display_name || session.document.name}>
+                  {session.display_name || session.document.name}
+                </span>
+                <small>{session.message_count} messages</small>
+              </button>
+            ))}
+          </section>
+        )}
+
+        <label className="debug-toggle">
+          <input
+            type="checkbox"
+            checked={debugMode}
+            onChange={async (event) => {
+              const enabled = event.target.checked;
+              setDebugMode(enabled);
+              setDebugData(enabled ? await getDebugData(activeSessionId) : null);
+            }}
+          />
+          Developer debug mode
+        </label>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
           <div>
-            <h2>Document Intelligence</h2>
+            <h2>Resume Intelligence</h2>
             <p>
               {activeDocument
-                ? `Current Document: ${activeDocument.name}`
-                : "Upload a document to start asking grounded questions."}
+                ? `Current Resume: ${activeDocument.name}`
+                : "Upload a resume to start asking grounded questions."}
             </p>
           </div>
           <div className="toolbar">
@@ -189,7 +275,7 @@ function App() {
         {uploadNotice && <div className="success-banner">{uploadNotice}</div>}
 
         <section className="stats-grid">
-          <Stat icon={<FileText size={18} />} label="Documents" value={stats?.document_count || 0} />
+          <Stat icon={<FileText size={18} />} label="Resumes" value={stats?.document_count || 0} />
           <Stat icon={<Layers size={18} />} label="Chunks" value={stats?.total_chunks || 0} />
           <Stat icon={<MessageSquare size={18} />} label="Messages" value={stats?.message_count || 0} />
           <Stat icon={<Clock size={18} />} label="Characters" value={(stats?.total_characters || 0).toLocaleString()} />
@@ -197,10 +283,12 @@ function App() {
 
         {activeDocument && (
           <details className="preview-panel">
-            <summary>Extracted Document Preview</summary>
+            <summary>Extracted Resume Preview</summary>
             <pre>{activeDocument.preview}</pre>
           </details>
         )}
+
+        {debugMode && <DebugPanel data={debugData} />}
 
         <section className="chat-panel">
           <div className="messages">
@@ -228,7 +316,7 @@ function App() {
             <input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask a follow-up question about the uploaded documents"
+              placeholder="Ask a follow-up question about the active resume"
               disabled={busy}
             />
             <button disabled={busy || !question.trim()} title="Send">
@@ -238,6 +326,49 @@ function App() {
         </section>
       </section>
     </main>
+  );
+}
+
+function DebugPanel({ data }) {
+  if (!data) {
+    return <section className="debug-panel">Debug data is not available yet.</section>;
+  }
+
+  return (
+    <section className="debug-panel">
+      <h2>Developer Debug</h2>
+      <details>
+        <summary>Extracted Text</summary>
+        <pre>{data.extracted_text || ""}</pre>
+      </details>
+      <details>
+        <summary>Generated Chunks ({data.chunks?.length || 0})</summary>
+        <pre>{JSON.stringify(data.chunks || [], null, 2)}</pre>
+      </details>
+      <details>
+        <summary>Chunk Metadata</summary>
+        <pre>{JSON.stringify((data.chunks || []).map(({ content, ...metadata }) => metadata), null, 2)}</pre>
+      </details>
+      <details>
+        <summary>Retrieved Chunks ({data.retrieved_chunks?.length || 0})</summary>
+        <pre>{JSON.stringify(data.retrieved_chunks || [], null, 2)}</pre>
+      </details>
+      <details>
+        <summary>Similarity Scores</summary>
+        <pre>{JSON.stringify((data.retrieved_chunks || []).map((chunk) => ({
+          chunk_id: chunk.chunk_id,
+          section: chunk.section,
+          title: chunk.title,
+          page: chunk.page,
+          similarity: chunk.similarity ?? "N/A",
+          strategy: data.last_retrieval?.strategy,
+        })), null, 2)}</pre>
+      </details>
+      <details>
+        <summary>Final LLM Context</summary>
+        <pre>{data.final_context || ""}</pre>
+      </details>
+    </section>
   );
 }
 
@@ -255,18 +386,21 @@ function SourceList({ retrieval, promptSize }) {
   return (
     <details className="sources">
       <summary>
-        {retrieval.chunk_count} chunks used | {retrieval.context_size.toLocaleString()} context chars | {promptSize?.toLocaleString()} prompt chars
+        Retrieved: {retrieval.chunks.map((chunk) => `${chunk.section} | Chunk ${chunk.chunk_number} | Page ${chunk.page || "N/A"}`).join("; ")}
       </summary>
+      <div className="source-meta">
+        {retrieval.chunk_count} chunks used | {retrieval.context_size.toLocaleString()} context chars | {promptSize?.toLocaleString()} prompt chars | {retrieval.strategy || "semantic"}
+      </div>
       {retrieval.chunks.map((chunk) => (
         <div className="source" key={`${chunk.document_id}-${chunk.chunk_number}`}>
           <div>
             <strong>{chunk.document_name} | Chunk {chunk.chunk_number}</strong>
-            <span>{chunk.section}</span>
+            <span>{chunk.section} | Chunk ID {chunk.chunk_id || chunk.chunk_number} | Page {chunk.page || "N/A"} | {chunk.title || chunk.section}</span>
           </div>
           <small>
             {chunk.size.toLocaleString()} chars | similarity {chunk.similarity?.toFixed(3) ?? "N/A"}
           </small>
-          <p>{chunk.text.slice(0, 520)}</p>
+          <p>{(chunk.content || chunk.text).slice(0, 520)}</p>
         </div>
       ))}
     </details>

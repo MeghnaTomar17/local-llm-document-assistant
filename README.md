@@ -1,53 +1,43 @@
-# Local LLM Document Assistant
+# Resume Intelligence Assistant
 
-A local document intelligence assistant powered by Ollama, Llama 3.2, semantic RAG, FastAPI, and React.
+A local resume intelligence assistant powered by Ollama, Llama 3.2, FastAPI, React, sentence-transformers, and FAISS.
 
-The project still supports the Streamlit app, PDF/DOC/DOCX upload, chunking, question answering, quick actions, chat, document statistics, and response timing. It now adds conversational memory, source attribution, document preview, chat export, retrieval diagnostics, and FAISS-backed semantic search.
+The app supports PDF and DOCX resumes, resume-aware chunking, semantic retrieval, session-based memory, quick actions, chat export, source attribution, response timing, and retrieval diagnostics.
 
-## What Changed
+## Key Features
 
-### Phase 1: Advanced Document Intelligence
+* Upload PDF or DOCX resumes.
+* Split resumes into logical sections: Contact Information, Summary, Education, Skills, Experience, Projects, Certifications, Achievements, and Languages.
+* Store chunk metadata: `chunk_id`, `section`, `title`, `page`, and `content`.
+* Keep each uploaded resume in its own runtime session with isolated chat history, metadata, chunks, and FAISS index.
+* Switch between resume sessions without cross-resume context leakage.
+* Use Ollama and Llama 3.2 for local answers.
 
-* Recent chat history is included in prompts for follow-up questions.
-* Assistant responses include source chunks, chunk count, context size, prompt size, sections, and similarity diagnostics.
-* Uploaded document text preview is available in an expandable panel.
-* Chat can be exported as TXT with timestamps and user/assistant messages.
+## Resume Retrieval
 
-### Phase 2: Real RAG
+Retrieval is dynamic:
 
-* Retrieval now uses `sentence-transformers` embeddings.
-* Chunk vectors are stored in an in-process FAISS index.
-* Similarity search retrieves the top relevant chunks before calling Ollama.
-* The assistant is intentionally single-document: uploading a new document resets FAISS, chunk metadata, retrieval diagnostics, and chat history.
+* Specific project questions retrieve only the matching project chunk.
+* Section questions such as skills, education, experience, certifications, achievements, and languages retrieve the matching section chunk or chunks.
+* Summary and overview questions retrieve multiple relevant resume sections.
+* General questions fall back to FAISS semantic retrieval with a small context window.
 
-### Phase 3: Production Architecture
+The prompt instructs the model to use only resume information, avoid invented details, avoid mixing projects, and clearly state when information is unavailable.
 
-New structure:
+## Debug Mode
 
-```text
-backend/
-  api/
-  services/
-  rag/
-  models/
-  uploads/
-  main.py
+Developer debug mode can be toggled in the UI to inspect extracted text, generated chunks, chunk metadata, retrieved chunks, similarity scores, and the final context sent to the LLM.
 
-frontend/
-  src/
-    components/
-    pages/
-    services/
-    App.jsx
-```
-
-Implemented APIs:
+## APIs
 
 * `POST /upload`
 * `POST /ask`
 * `GET /stats`
 * `GET /chat-history`
 * `POST /clear-chat`
+* `GET /sessions`
+* `GET /debug`
+* `POST /switch-session`
 
 ## Install
 
@@ -65,12 +55,6 @@ ollama serve
 ```
 
 The first semantic indexing run downloads the `all-MiniLM-L6-v2` embedding model.
-
-## Run Streamlit App
-
-```bash
-streamlit run app.py
-```
 
 ## Run FastAPI Backend
 
@@ -98,28 +82,14 @@ Frontend URL:
 http://localhost:5173
 ```
 
-Set `VITE_API_URL` if the backend runs somewhere else.
+## Run Streamlit App
 
-## Migration Notes
+```bash
+streamlit run app.py
+```
 
-* `pdf_processor.py` is the shared document and RAG engine used by both Streamlit and FastAPI.
-* The old keyword retrieval path has been replaced by FAISS similarity search.
-* Chat history is stored in process memory for now. Use a database or session store before deploying to multiple users.
-* The FAISS index is process-local and single-document in this version. Re-upload documents after restarting the backend or Streamlit process.
-* Uploaded files are saved under `uploads/` for Streamlit and `backend/uploads/` for FastAPI.
-* DOC conversion still requires LibreOffice and the `soffice` command.
+## Notes
 
-## Technologies
-
-* Python
-* Ollama
-* Llama 3.2
-* FastAPI
-* Streamlit
-* React
-* Vite
-* Axios
-* sentence-transformers
-* FAISS
-* PyPDF
-* python-docx
+* Runtime resume sessions are in memory. Re-upload resumes after restarting the backend process.
+* Each resume session owns its own in-memory FAISS index.
+* DOC files are no longer accepted; use PDF or DOCX resumes.

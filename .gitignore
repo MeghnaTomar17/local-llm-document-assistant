@@ -3,26 +3,31 @@ venv/
 __pycache__/
 *.pyc
 
-# Streamlit
-.streamlit/
-
-# Uploads
-uploads/
-backend/uploads/
-
-# Vector Index / Local Data
-faiss_index*
-*.index
-
-# Environment Variables
+# Environment
 .env
-
-# Node
-frontend/node_modules/
 
 # VS Code
 .vscode/
 
-# OS Files
+# Node
+frontend/node_modules/
+
+# Uploaded resumes
+uploads/
+backend/uploads/
+
+# Session data
+resume_sessions/
+sessions/
+
+# FAISS indexes
+faiss_indexes/
+*.index
+
+# Generated output
+sample_output/
+debug_output/
+
+# OS files
 .DS_Store
 Thumbs.db

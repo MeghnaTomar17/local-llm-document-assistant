@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routes import router
 
 
-app = FastAPI(title="Local LLM Document Assistant API")
+app = FastAPI(title="Resume Intelligence Assistant API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,4 +19,4 @@ app.include_router(router)
 
 @app.get("/")
 def health_check():
-    return {"status": "ok", "service": "Local LLM Document Assistant"}
+    return {"status": "ok", "service": "Resume Intelligence Assistant"}
