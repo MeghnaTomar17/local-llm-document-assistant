@@ -7,9 +7,11 @@ The app supports PDF and DOCX resumes, resume-aware chunking, semantic retrieval
 ## Key Features
 
 * Upload PDF or DOCX resumes.
+* Use layered PDF extraction for visual resumes: PyMuPDF block ordering, pdfplumber, pypdf, then OCR fallback when extraction quality is poor.
 * Split resumes into logical sections: Contact Information, Summary, Education, Skills, Experience, Projects, Certifications, Achievements, and Languages.
 * Store chunk metadata: `chunk_id`, `section`, `title`, `page`, and `content`.
 * Keep each uploaded resume in its own runtime session with isolated chat history, metadata, chunks, and FAISS index.
+* Regenerate `metadata.txt` and `metadata.csv` after each upload with metadata for all resumes uploaded in the current runtime session.
 * Switch between resume sessions without cross-resume context leakage.
 * Use Ollama and Llama 3.2 for local answers.
 
@@ -27,6 +29,8 @@ The prompt instructs the model to use only resume information, avoid invented de
 ## Debug Mode
 
 Developer debug mode can be toggled in the UI to inspect extracted text, generated chunks, chunk metadata, retrieved chunks, similarity scores, and the final context sent to the LLM.
+Debug output also shows the extraction method and quality signals used before metadata generation.
+Set `PDF_EXTRACTION_DEBUG=1` before starting the backend or Streamlit app to print PyMuPDF block coordinates and detected single-column or multi-column layouts.
 
 ## APIs
 
@@ -37,6 +41,7 @@ Developer debug mode can be toggled in the UI to inspect extracted text, generat
 * `POST /clear-chat`
 * `GET /sessions`
 * `GET /debug`
+* `GET /metadata`
 * `POST /switch-session`
 
 ## Install
@@ -91,5 +96,7 @@ streamlit run app.py
 ## Notes
 
 * Runtime resume sessions are in memory. Re-upload resumes after restarting the backend process.
+* Runtime metadata records are also in memory. Fresh app starts recreate empty `metadata.txt` and `metadata.csv`.
 * Each resume session owns its own in-memory FAISS index.
 * DOC files are no longer accepted; use PDF or DOCX resumes.
+* EasyOCR is included for image-heavy PDF fallback. PaddleOCR is also supported if installed separately.

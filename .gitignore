@@ -1,33 +1,63 @@
 # Python
-venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
 
-# Environment
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Environment Variables
 .env
+.env.*
 
-# VS Code
-.vscode/
+# Streamlit
+.streamlit/
 
 # Node
-frontend/node_modules/
+node_modules/
+npm-debug.log*
+
+# Build Files
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+*.log
 
 # Uploaded resumes
 uploads/
 backend/uploads/
 
-# Session data
-resume_sessions/
-sessions/
+# Generated metadata
+metadata.txt
+metadata.csv
 
-# FAISS indexes
-faiss_indexes/
-*.index
+# FAISS / Vector indexes (if generated locally)
+faiss_index/
+vector_store/
+vector_db/
+*.faiss
 
-# Generated output
-sample_output/
-debug_output/
+# Temporary files
+temp/
+tmp/
+*.tmp
 
-# OS files
-.DS_Store
-Thumbs.db
+# Model cache (optional)
+.huggingface/
+.cache/

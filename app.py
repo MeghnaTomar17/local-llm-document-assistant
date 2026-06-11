@@ -12,9 +12,11 @@ from pdf_processor import (
     process_document,
     validate_file_type,
 )
+from backend.services.metadata_service import ResumeMetadataService
 
 
 UPLOAD_DIR = Path("uploads")
+METADATA_SERVICE = ResumeMetadataService()
 
 QUICK_ACTIONS = {
     "Resume Summary": "Summarize the resume.",
@@ -105,6 +107,7 @@ def initialize_state():
         "last_retrieval": None,
         "upload_notice": None,
         "debug_mode": False,
+        "metadata_records": [],
     }
 
     for key, value in defaults.items():
@@ -248,6 +251,12 @@ if uploaded_file:
             saved_path = save_uploaded_file(uploaded_file)
             validate_file_type(saved_path)
             st.session_state.document = process_document(saved_path, document_name=uploaded_file.name)
+            metadata = METADATA_SERVICE.add_resume(
+                st.session_state.document["name"],
+                st.session_state.document.get("text", ""),
+            )
+            st.session_state.document["metadata"] = metadata
+            st.session_state.metadata_records = list(METADATA_SERVICE.records)
             st.session_state.uploaded_file_name = uploaded_file.name
             st.session_state.messages = []
             st.session_state.last_retrieval = None
@@ -270,6 +279,13 @@ if st.session_state.document:
     if st.session_state.upload_notice:
         st.success(st.session_state.upload_notice)
     display_stats(st.session_state.document)
+    if st.session_state.document.get("metadata"):
+        st.caption(
+            "Metadata: "
+            f"{st.session_state.document['metadata'].get('Candidate Name') or 'Unknown name'} | "
+            f"{st.session_state.document['metadata'].get('Email') or 'No email'} | "
+            f"{st.session_state.document['metadata'].get('Phone Number') or 'No phone'}"
+        )
     with st.expander("Resume Preview", expanded=False):
         st.text_area(
             "Extracted text preview",
@@ -281,6 +297,14 @@ if st.session_state.document:
 
     if st.session_state.debug_mode:
         with st.expander("Developer Debug", expanded=False):
+            st.subheader("Extraction Method and Quality")
+            st.json(
+                {
+                    "method": st.session_state.document.get("extraction_method"),
+                    "quality": st.session_state.document.get("extraction_quality", {}),
+                }
+            )
+
             st.subheader("Extracted Text")
             st.text_area(
                 "Extracted resume text",
@@ -315,6 +339,9 @@ if st.session_state.document:
                 height=220,
                 label_visibility="collapsed",
             )
+
+            st.subheader("Session Metadata Records")
+            st.json(st.session_state.metadata_records)
 
 st.divider()
 

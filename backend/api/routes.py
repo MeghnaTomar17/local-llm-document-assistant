@@ -29,6 +29,7 @@ async def upload_document(file: UploadFile = File(...)):
         "session_id": session.session_id,
         "document": document_service.public_document(session.document),
         "sessions": document_service.public_sessions(),
+        "metadata": document_service.metadata_payload(),
         "message": "New resume session created. Previous resume sessions remain available.",
     }
 
@@ -83,6 +84,11 @@ def sessions():
 @router.get("/debug")
 def debug(session_id: str | None = None):
     return document_service.debug_payload(session_id=session_id)
+
+
+@router.get("/metadata")
+def metadata():
+    return document_service.metadata_payload()
 
 
 @router.post("/switch-session")

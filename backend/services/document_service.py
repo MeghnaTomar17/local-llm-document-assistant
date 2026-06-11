@@ -8,6 +8,7 @@ from pdf_processor import (
     export_chat,
     process_document,
 )
+from backend.services.metadata_service import ResumeMetadataService
 
 
 class ResumeSession:
@@ -28,6 +29,7 @@ class DocumentService:
         self.sessions = {}
         self.active_session_id = None
         self.allowed_extensions = ALLOWED_EXTENSIONS
+        self.metadata_service = ResumeMetadataService()
 
     @property
     def active_session(self):
@@ -53,6 +55,11 @@ class DocumentService:
             reset_store=True,
             document_name=display_name,
         )
+        metadata = self.metadata_service.add_resume(
+            document["name"],
+            document.get("text", ""),
+        )
+        document["metadata"] = metadata
         session_id = uuid.uuid4().hex
         session = ResumeSession(session_id, document, vector_store)
         self.sessions[session_id] = session
@@ -130,6 +137,7 @@ class DocumentService:
             "total_characters": sum(document["character_count"] for document in documents),
             "total_chunks": sum(document["chunk_count"] for document in documents),
             "message_count": len(messages),
+            "metadata_count": len(self.metadata_service.records),
         }
 
     def chat_history(self, session_id=None):
@@ -160,6 +168,9 @@ class DocumentService:
             "character_count": document["character_count"],
             "chunk_count": document["chunk_count"],
             "indexed_at": document["indexed_at"],
+            "metadata": document.get("metadata", {}),
+            "extraction_method": document.get("extraction_method"),
+            "extraction_quality": document.get("extraction_quality", {}),
         }
 
     @staticmethod
@@ -195,11 +206,27 @@ class DocumentService:
             "session_id": session.session_id,
             "document": self.public_document(session.document),
             "extracted_text": session.document.get("text", ""),
+            "extraction_method": session.document.get("extraction_method"),
+            "extraction_quality": session.document.get("extraction_quality", {}),
             "chunks": [self.public_chunk(chunk) for chunk in session.document.get("chunks", [])],
             "vector_chunks": [self.public_chunk(chunk) for chunk in session.vector_store.get("chunks", [])],
             "last_retrieval": last_retrieval,
             "retrieved_chunks": last_retrieval.get("chunks", []) if last_retrieval else [],
             "final_context": last_retrieval.get("context", "") if last_retrieval else "",
+            "metadata_records": self.metadata_service.records,
+            "metadata_files": {
+                "txt": str(self.metadata_service.txt_path),
+                "csv": str(self.metadata_service.csv_path),
+            },
+        }
+
+    def metadata_payload(self):
+        return {
+            "records": self.metadata_service.records,
+            "files": {
+                "txt": str(self.metadata_service.txt_path),
+                "csv": str(self.metadata_service.csv_path),
+            },
         }
 
 
