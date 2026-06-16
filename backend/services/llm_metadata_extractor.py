@@ -1,23 +1,28 @@
 """LLM-first resume metadata extraction with strict output validation."""
 
 import json
+import logging
 import os
 import re
-from urllib import response
 
 import requests
 
 
+logger = logging.getLogger(__name__)
 DEFAULT_OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-DEFAULT_MODEL = "llama3.2:3b"
-DEFAULT_MAX_LINES = 30
-MIN_CONTEXT_LINES = 20
-MAX_CONTEXT_LINES = 40
-DEFAULT_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_METADATA_TIMEOUT_SECONDS", "60"))
+DEFAULT_MODEL = os.getenv("OLLAMA_METADATA_MODEL", "llama3.2:3b")
+DEFAULT_MAX_LINES = int(os.getenv("OLLAMA_METADATA_MAX_LINES", "80"))
+MIN_CONTEXT_LINES = 30
+MAX_CONTEXT_LINES = 120
+DEFAULT_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_METADATA_TIMEOUT_SECONDS", "25"))
 
 MODEL_ALIASES = {
+    "llama3.1": "llama3.1",
+    "llama3.2:3b": "llama3.2:3b",
     "llama": "llama3.2:3b",
-    "llama3.2": "llama3.2:3b",
+    "qwen": "qwen",
+    "mistral": "mistral",
+    "gemma": "gemma",
 }
 
 EMPTY_METADATA = {
@@ -40,7 +45,7 @@ class LLMMetadataExtractor:
             return dict(EMPTY_METADATA)
 
         try:
-            response = requests.post(
+            ollama_response = requests.post(
                 self.ollama_url,
                 json={
                     "model": self.model,
@@ -48,19 +53,18 @@ class LLMMetadataExtractor:
                     "stream": False,
                     "format": "json",
                     "options": {
-                        "temperature": 0
+                        "temperature": 0,
+                        "num_predict": 120,
                     }
                 },
                 timeout=self.timeout,
             )
-            response.raise_for_status()
-            raw_response = response.json().get("response", "")
-        except Exception as e:
-            print("=" * 80)
-            print("OLLAMA ERROR")
-            print(e)
-            print("=" * 80)
-            raise
+            ollama_response.raise_for_status()
+            raw_response = ollama_response.json().get("response", "")
+            logger.info("Ollama metadata raw output: %s", raw_response)
+        except Exception as exc:
+            logger.warning("Ollama metadata extraction failed: %s", exc)
+            return dict(EMPTY_METADATA)
 
         return parse_and_validate_metadata(raw_response)
 
@@ -81,9 +85,7 @@ def first_resume_lines(text, max_lines=DEFAULT_MAX_LINES):
 
 def build_metadata_prompt(context):
     return f"""
-Extract resume metadata from the supplied text.
-
-Return ONLY a JSON object with the following keys: candidate_name, email, phone_number:
+Extract only this resume metadata. Return ONLY JSON:
 {{
   "candidate_name": "...",
   "email": "...",
@@ -92,9 +94,8 @@ Return ONLY a JSON object with the following keys: candidate_name, email, phone_
 
 Rules:
 - Use only information explicitly present in the resume text.
-- candidate_name must be the person's full name, not a company, role, heading, location, or institution.
+- candidate_name must be the person's full name, not a company, role, heading, location, or school.
 - Do not invent missing values. Use an empty string when unavailable.
-- Do not add markdown, explanation, or extra keys.
 
 Resume text:
 {context}

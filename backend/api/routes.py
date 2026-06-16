@@ -2,7 +2,7 @@ from pathlib import Path
 import time
 import uuid
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from backend.services.document_service import document_service
 
@@ -28,9 +28,64 @@ async def upload_document(file: UploadFile = File(...)):
     return {
         "session_id": session.session_id,
         "document": document_service.public_document(session.document),
+        "documents": [document_service.public_document(document) for document in session.documents],
         "sessions": document_service.public_sessions(),
         "metadata": document_service.metadata_payload(),
-        "message": "New resume session created. Previous resume sessions remain available.",
+        "message": "Resume uploaded to the active session.",
+    }
+
+
+@router.post("/upload-batch")
+async def upload_documents(
+    files: list[UploadFile] = File(...),
+    session_id: str | None = Form(None),
+):
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    file_items = []
+    errors = []
+
+    for file in files:
+        extension = Path(file.filename or "").suffix.lower()
+        if extension not in document_service.allowed_extensions:
+            errors.append(
+                {
+                    "file_name": file.filename or "",
+                    "error": "Only PDF and DOCX resumes are supported.",
+                }
+            )
+            continue
+
+        file_path = UPLOAD_DIR / f"{uuid.uuid4().hex}{extension}"
+        try:
+            file_path.write_bytes(await file.read())
+            file_items.append((file_path, file.filename))
+        except Exception as exc:
+            errors.append(
+                {
+                    "file_name": file.filename or "",
+                    "error": str(exc),
+                }
+            )
+
+    try:
+        result = document_service.add_documents(file_items, session_id=session_id) if file_items else None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    session = result["session"] if result else document_service.active_session
+    processing_errors = result["errors"] if result else []
+    errors.extend(processing_errors)
+
+    return {
+        "session_id": session.session_id if session else None,
+        "documents": [document_service.public_document(document) for document in (session.documents if session else [])],
+        "uploaded_documents": [
+            document_service.public_document(document)
+            for document in (result["documents"] if result else [])
+        ],
+        "errors": errors,
+        "sessions": document_service.public_sessions(),
+        "metadata": document_service.metadata_payload(session.session_id if session else None),
+        "message": f"Processed {len(result['documents']) if result else 0} resume(s); {len(errors)} failed.",
     }
 
 
@@ -87,8 +142,13 @@ def debug(session_id: str | None = None):
 
 
 @router.get("/metadata")
-def metadata():
-    return document_service.metadata_payload()
+def metadata(session_id: str | None = None):
+    return document_service.metadata_payload(session_id=session_id)
+
+
+@router.post("/reset")
+def reset_runtime_state():
+    return document_service.reset()
 
 
 @router.post("/switch-session")

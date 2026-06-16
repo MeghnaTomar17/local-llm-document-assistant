@@ -47,6 +47,7 @@ test_resumes/
 # Generated metadata
 metadata.txt
 metadata.csv
+backend/session_metadata/
 
 # FAISS / Vector indexes (if generated locally)
 faiss_index/

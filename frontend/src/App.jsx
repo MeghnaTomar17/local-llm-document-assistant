@@ -18,8 +18,10 @@ import {
   getSessions,
   getChatHistory,
   getStats,
+  resetRuntimeState,
   switchSession,
   uploadDocument,
+  uploadDocuments,
 } from "./services/api";
 import "./styles.css";
 
@@ -37,6 +39,21 @@ const quickActions = [
   ["Career Highlights", "List the career highlights from the resume."],
   ["Recruiter Summary", "Write a concise recruiter summary using only the resume."],
 ];
+
+const compareCandidatesPrompt = `
+Compare the uploaded candidates in a visually clear, tidy format.
+
+Use one compact section per candidate with:
+- Candidate name
+- Key skills
+- Experience level
+- Education
+- Main strengths
+- Best-fit role or use case
+
+Then add a short final recommendation with the strongest candidate for each major role/skill area.
+Use only the uploaded resume context. Keep candidates separate. If a value is unavailable, write "Not provided".
+`.trim();
 
 function App() {
   const [stats, setStats] = useState(null);
@@ -72,17 +89,24 @@ function App() {
     }
   }
 
-  async function handleUpload(file) {
-    if (!file) return;
-    if (!/\.(pdf|docx)$/i.test(file.name)) {
-      setError("Upload a PDF or DOCX resume.");
+  async function handleUpload(fileList) {
+    const selectedFiles = Array.from(fileList || []);
+    if (!selectedFiles.length) return;
+
+    const validFiles = selectedFiles.filter((file) => /\.(pdf|docx)$/i.test(file.name));
+    const invalidCount = selectedFiles.length - validFiles.length;
+
+    if (!validFiles.length) {
+      setError("Upload PDF or DOCX resumes.");
       return;
     }
 
     setBusy(true);
     setError("");
     try {
-      const result = await uploadDocument(file);
+      const result = validFiles.length === 1
+        ? await uploadDocument(validFiles[0])
+        : await uploadDocuments(validFiles, activeSessionId);
       setActiveSessionId(result.session_id);
       const [nextStats, nextMessages, sessionData] = await Promise.all([
         getStats(result.session_id),
@@ -95,11 +119,19 @@ function App() {
       if (debugMode) {
         setDebugData(await getDebugData(result.session_id));
       }
-      setUploadNotice(result.message || "New resume session created.");
+      const rejectedMessage = invalidCount ? ` ${invalidCount} unsupported file(s) were skipped.` : "";
+      const failedMessage = result.errors?.length ? ` ${result.errors.length} file(s) failed.` : "";
+      setUploadNotice(`${result.message || "Resume upload complete."}${rejectedMessage}${failedMessage}`);
+      if (result.errors?.length) {
+        setError(result.errors.map((item) => `${item.file_name}: ${item.error}`).join("\n"));
+      }
     } catch (err) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setBusy(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   }
 
@@ -131,6 +163,31 @@ function App() {
       await clearChat(activeSessionId);
       setMessages([]);
       await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleClearWorkspace() {
+    if (busy) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      await resetRuntimeState();
+      setStats(null);
+      setMessages([]);
+      setSessions([]);
+      setActiveSessionId(null);
+      setDebugData(null);
+      setQuestion("");
+      setUploadNotice("Workspace cleared. Upload resumes to start a new session.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      await refresh();
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message);
     } finally {
       setBusy(false);
     }
@@ -193,20 +250,32 @@ function App() {
           onDrop={(event) => {
             event.preventDefault();
             setDragging(false);
-            handleUpload(event.dataTransfer.files[0]);
+            handleUpload(event.dataTransfer.files);
           }}
           onClick={() => fileInputRef.current?.click()}
         >
           <UploadCloud size={30} />
-          <strong>Drop resume</strong>
-          <span>PDF, DOCX</span>
+          <strong>Drop resumes</strong>
+          <span>PDF, DOCX | single or multiple</span>
           <input
             ref={fileInputRef}
             type="file"
             accept=".pdf,.docx"
-            onChange={(event) => handleUpload(event.target.files[0])}
+            multiple
+            onChange={(event) => handleUpload(event.target.files)}
           />
         </section>
+
+        <div className="workspace-actions">
+          <button disabled={documents.length < 2 || busy} onClick={() => submitQuestion(compareCandidatesPrompt)}>
+            <Layers size={16} />
+            Compare Uploaded Candidates
+          </button>
+          <button disabled={busy} onClick={handleClearWorkspace}>
+            <Trash2 size={16} />
+            Clear Workspace
+          </button>
+        </div>
 
         <div className="quick-actions">
           {quickActions.map(([label, prompt]) => (
@@ -231,7 +300,9 @@ function App() {
                 <span title={session.display_name || session.document.name}>
                   {session.display_name || session.document.name}
                 </span>
-                <small>{session.message_count} messages</small>
+                <small>
+                  {session.document_count || 1} resumes | {session.message_count} messages
+                </small>
               </button>
             ))}
           </section>
@@ -257,7 +328,7 @@ function App() {
             <h2>Resume Intelligence</h2>
             <p>
               {activeDocument
-                ? `Current Resume: ${activeDocument.name}`
+                ? `Current Resume: ${activeDocument.name}${documents.length > 1 ? ` (${documents.length} in session)` : ""}`
                 : "Upload a resume to start asking grounded questions."}
             </p>
           </div>
@@ -283,8 +354,13 @@ function App() {
 
         {activeDocument && (
           <details className="preview-panel">
-            <summary>Extracted Resume Preview</summary>
-            <pre>{activeDocument.preview}</pre>
+            <summary>Extracted Resume Preview ({documents.length} resume{documents.length === 1 ? "" : "s"})</summary>
+            {documents.map((document) => (
+              <div className="preview-document" key={document.document_id}>
+                <h3>{document.name}</h3>
+                <pre>{document.preview}</pre>
+              </div>
+            ))}
           </details>
         )}
 

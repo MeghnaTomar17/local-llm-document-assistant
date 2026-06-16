@@ -1200,6 +1200,15 @@ def retrieve_by_resume_intent(question, chunks):
     if not chunks:
         return None
 
+    if is_comparison_query(question):
+        selected_chunks = select_comparison_chunks(chunks)
+        if selected_chunks:
+            return {
+                "chunks": selected_chunks,
+                "strategy": "comparison",
+                "query_type": "comparison",
+            }
+
     project_chunks = [chunk for chunk in chunks if chunk.get("section") == "Projects"]
     project_chunk = find_project_chunk(question, project_chunks)
     if project_chunk:
@@ -1286,6 +1295,47 @@ def is_summary_query(question):
     return any(term in question_normalized for term in SUMMARY_QUERY_TERMS)
 
 
+def is_comparison_query(question):
+    question_normalized = normalize_for_match(question)
+    return any(
+        term in question_normalized
+        for term in {
+            "compare",
+            "comparison",
+            "versus",
+            "vs",
+            "difference",
+            "differences",
+            "better",
+            "best candidate",
+            "rank",
+            "ranking",
+            "shortlist",
+            "who is more suitable",
+            "which candidate",
+        }
+    )
+
+
+def select_comparison_chunks(chunks):
+    grouped = {}
+    for chunk in chunks:
+        grouped.setdefault(chunk.get("document_id"), []).append(chunk)
+
+    selected = []
+    comparison_priority = ["Summary", "Skills", "Experience", "Projects", "Education", "Certifications"]
+    for document_chunks in grouped.values():
+        for section in comparison_priority:
+            section_chunks = [chunk for chunk in document_chunks if chunk.get("section") == section]
+            if not section_chunks:
+                continue
+            selected.extend(section_chunks[:2] if section == "Projects" else section_chunks[:1])
+        if not any(chunk in selected for chunk in document_chunks):
+            selected.extend(document_chunks[:2])
+
+    return selected[:24]
+
+
 def select_summary_chunks(chunks):
     selected = []
     for section in SUMMARY_SECTION_PRIORITY:
@@ -1350,6 +1400,8 @@ You are a Resume Intelligence Assistant.
 Use ONLY the resume context and recent conversation shown here.
 Never invent employers, dates, skills, projects, certifications, achievements, education, or contact details.
 Never mix details from different projects.
+When multiple resumes are present, keep each candidate/resume separate and compare them by resume name.
+For comparison questions, use tidy grouped bullets or short candidate sections, not a table, and cite the resume/document names.
 Never combine unrelated resume sections into one answer unless the user asks for a summary or overview.
 If information is unavailable in the resume context, clearly say that the resume does not provide that information.
 Use recent conversation only to resolve follow-up references, not to add facts outside the resume.

@@ -1,8 +1,11 @@
 from pathlib import Path
 import csv
+import logging
 import re
 
 from backend.services.llm_metadata_extractor import extract_metadata_with_ollama
+
+logger = logging.getLogger(__name__)
 
 METADATA_FIELDS = [
     "Resume File Name",
@@ -27,6 +30,10 @@ class ResumeMetadataService:
 
     def add_resume(self, file_name, extracted_text):
         record = extract_resume_metadata(file_name, extracted_text, llm_model=self.llm_model)
+        self.add_record(record)
+        return record
+
+    def add_record(self, record):
         self.records.append(record)
         self.regenerate_files()
         return record
@@ -56,32 +63,29 @@ class ResumeMetadataService:
 def extract_resume_metadata(file_name, extracted_text, llm_model=None):
     text = extracted_text or ""
     llm_metadata = extract_metadata_with_ollama(text, model=llm_model)
+    logger.info("Validated LLM metadata for %s: %s", file_name, llm_metadata)
+    fallback_metadata = None
 
-    print("=" * 50)
-    print("LLM OUTPUT")
-    print(llm_metadata)
-    print("=" * 50)
-
-    # LLM extraction is attempted first. Existing deterministic methods fill only missing fields.
-    candidate_name = llm_metadata.get("candidate_name")
-
-    if not candidate_name:
-        print("LLM FAILED -> Falling back to heuristic")
-
-    candidate_name = (
-        candidate_name
-        or extract_candidate_name(text)
-        or extract_candidate_name_from_file_name(file_name)
-    )
-    candidate_name = candidate_name or extract_candidate_name_from_file_name(file_name)
-    email = llm_metadata.get("email") or extract_email(text)
-    phone_number = llm_metadata.get("phone_number") or extract_phone_number(text)
+    def fallback_value(field):
+        nonlocal fallback_metadata
+        if fallback_metadata is None:
+            fallback_metadata = deterministic_metadata_fallback(file_name, text)
+        return fallback_metadata[field]
 
     return {
         "Resume File Name": file_name or "",
-        "Candidate Name": candidate_name,
-        "Email": email,
-        "Phone Number": normalize_phone(phone_number) if phone_number else "",
+        "Candidate Name": llm_metadata.get("candidate_name") or fallback_value("Candidate Name"),
+        "Email": llm_metadata.get("email") or fallback_value("Email"),
+        "Phone Number": normalize_phone(llm_metadata.get("phone_number") or fallback_value("Phone Number")),
+    }
+
+
+def deterministic_metadata_fallback(file_name, text):
+    logger.info("Using deterministic metadata fallback for %s", file_name)
+    return {
+        "Candidate Name": extract_candidate_name(text) or extract_candidate_name_from_file_name(file_name),
+        "Email": extract_email(text),
+        "Phone Number": extract_phone_number(text),
     }
 
 

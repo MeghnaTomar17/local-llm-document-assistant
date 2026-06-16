@@ -13,6 +13,18 @@ export async function uploadDocument(file) {
   return response.data;
 }
 
+export async function uploadDocuments(files, sessionId) {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  if (sessionId) {
+    formData.append("session_id", sessionId);
+  }
+  const response = await api.post("/upload-batch", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+}
+
 export async function askQuestion(question, sessionId) {
   const response = await api.post("/ask", { question, session_id: sessionId });
   return response.data;
@@ -45,5 +57,10 @@ export async function switchSession(sessionId) {
 
 export async function getDebugData(sessionId) {
   const response = await api.get("/debug", { params: sessionId ? { session_id: sessionId } : {} });
+  return response.data;
+}
+
+export async function resetRuntimeState() {
+  const response = await api.post("/reset");
   return response.data;
 }
