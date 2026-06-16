@@ -32,6 +32,24 @@ Developer debug mode can be toggled in the UI to inspect extracted text, generat
 Debug output also shows the extraction method and quality signals used before metadata generation.
 Set `PDF_EXTRACTION_DEBUG=1` before starting the backend or Streamlit app to print PyMuPDF block coordinates and detected single-column or multi-column layouts.
 
+## LLM Metadata Extraction
+
+Resume metadata extraction uses Ollama first and falls back to the existing deterministic heuristics when the model is unavailable or returns invalid fields.
+
+Set the metadata model with:
+
+```powershell
+$env:OLLAMA_METADATA_MODEL="llama3.1"
+```
+
+Supported model aliases include `llama3.1`, `qwen`, `mistral`, and `gemma`. Any explicit Ollama model tag can also be used.
+
+Benchmark metadata extraction against a folder containing `ground_truth.csv`:
+
+```powershell
+python benchmark_llm_metadata.py path\to\resumes --model llama3.1
+```
+
 ## APIs
 
 * `POST /upload`
