@@ -14,15 +14,15 @@ DEFAULT_MODEL = os.getenv("OLLAMA_METADATA_MODEL", "llama3.2:3b")
 DEFAULT_MAX_LINES = int(os.getenv("OLLAMA_METADATA_MAX_LINES", "80"))
 MIN_CONTEXT_LINES = 30
 MAX_CONTEXT_LINES = 120
-DEFAULT_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_METADATA_TIMEOUT_SECONDS", "25"))
+DEFAULT_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_METADATA_TIMEOUT_SECONDS", "300"))
 
 MODEL_ALIASES = {
-    "llama3.1": "llama3.1",
+    "llama3.2": "llama3.2:3b",
     "llama3.2:3b": "llama3.2:3b",
     "llama": "llama3.2:3b",
-    "qwen": "qwen",
-    "mistral": "mistral",
-    "gemma": "gemma",
+    "qwen2.5:3b": "qwen2.5:3b",
+    "mistral": "mistral:latest",
+    "gemma": "gemma2:2b",
 }
 
 EMPTY_METADATA = {

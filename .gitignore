@@ -66,3 +66,29 @@ tmp/
 
 # Test files
 test.py
+check_extraction.py
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Metadata outputs
+metadata.txt
+metadata.csv
+
+# Session metadata
+backend/session_metadata/
+
+# Benchmark outputs
+failure_analysis.csv
+benchmark_results.csv
+
+# Training artifacts
+training_data/extracted_samples/
+training_data/test_10/
+training_data/hard_cases/
+*.gguf
+*.safetensors
+*.bin
+

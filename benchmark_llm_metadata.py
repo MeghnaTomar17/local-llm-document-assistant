@@ -1,10 +1,9 @@
 """Benchmark LLM-first resume metadata extraction against a ground-truth CSV."""
-
+import time
 import argparse
 import csv
 from pathlib import Path
 import re
-
 
 from backend.services.metadata_service import extract_resume_metadata
 from pdf_processor import ALLOWED_EXTENSIONS, extract_text
@@ -30,9 +29,12 @@ def main():
     parser.add_argument(
         "--model",
         default=None,
-        help="Ollama model or alias: llama3.1, qwen, mistral, or gemma.",
+        help="Ollama model or alias: llama3.2, qwen, mistral, or gemma.",
     )
     args = parser.parse_args()
+    print("=" * 80)
+    print(f"MODEL: {args.model}")
+    print("=" * 80)
 
     ground_truth_path = args.ground_truth or args.resume_folder / "ground_truth.csv"
     truth = load_ground_truth(ground_truth_path)
@@ -48,7 +50,7 @@ def main():
     totals = {"candidate_name": 0, "email": 0, "phone_number": 0}
     correct = {"candidate_name": 0, "email": 0, "phone_number": 0}
     evaluated_files = 0
-
+    total_time = 0
     for resume_path in resumes:
         expected = truth.get(normalize_file_name(resume_path.name))
         if not expected:
@@ -56,11 +58,14 @@ def main():
             continue
 
         extraction = extract_text(resume_path)
+        start = time.perf_counter()
         predicted = extract_resume_metadata(
             resume_path.name,
             extraction.get("text", ""),
             llm_model=args.model,
         )
+        elapsed = time.perf_counter() - start
+        total_time += elapsed
         print("\nFINAL RECORD:")
         print(predicted)
         print("=" * 80)
@@ -72,6 +77,7 @@ def main():
             "email": (predicted["Email"], expected["email"], normalize_text),
             "phone_number": (predicted["Phone Number"], expected["phone_number"], normalize_phone),
         }
+        
 
         for field, (actual, target, normalizer) in comparisons.items():
             if not target:
@@ -91,6 +97,29 @@ def main():
         accuracy = (correct[field] / totals[field] * 100) if totals[field] else 0.0
         print(f"{field}: {correct[field]}/{totals[field]} ({accuracy:.2f}%)")
     print(f"evaluated resumes: {evaluated_files}")
+    if evaluated_files:
+        print(
+            f"\nAverage inference time: "
+            f"{total_time/evaluated_files:.2f}s"
+        )
+
+    overall_correct = sum(correct.values())
+    overall_total = sum(totals.values())
+
+    overall_accuracy = (
+        overall_correct / overall_total * 100
+        if overall_total
+        else 0
+    )
+
+    print(
+        f"\nOVERALL: {overall_correct}/{overall_total} "
+        f"({overall_accuracy:.2f}%)"
+    )
+    print("\n" + "=" * 80)
+    print(f"MODEL: {args.model}")
+    print(f"OVERALL: {overall_correct}/{overall_total} ({overall_accuracy:.2f}%)")
+    print("=" * 80)
 
 
 def load_ground_truth(path):
@@ -134,7 +163,12 @@ def normalize_text(value):
 
 
 def normalize_phone(value):
-    return re.sub(r"\D", "", str(value or ""))
+    digits = re.sub(r"\D", "", str(value or ""))
+
+    if len(digits) > 10:
+        digits = digits[-10:]
+
+    return digits
 
 
 if __name__ == "__main__":
