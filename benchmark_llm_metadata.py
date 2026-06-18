@@ -163,13 +163,27 @@ def normalize_text(value):
 
 
 def normalize_phone(value):
-    digits = re.sub(r"\D", "", str(value or ""))
+    value = re.sub(r"\b(?:19|20)\d{2}\b.*$", "", str(value or "")).strip()
 
-    if len(digits) > 10:
-        digits = digits[-10:]
+    digits = re.sub(r"\D", "", value)
 
-    return digits
+    # Indian number with country code
+    if digits.startswith("91") and len(digits) == 12:
+        return f"+91 {digits[2:]}"
 
+    # Indian number with leading 0
+    if digits.startswith("0") and len(digits) == 11:
+        return digits
+
+    # Standard 10 digit
+    if len(digits) == 10:
+        return digits
+
+    # International numbers
+    if 11 <= len(digits) <= 15:
+        return value
+
+    return ""
 
 if __name__ == "__main__":
     main()

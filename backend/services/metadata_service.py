@@ -1,3 +1,4 @@
+from os import name
 from pathlib import Path
 import csv
 import logging
@@ -63,6 +64,9 @@ class ResumeMetadataService:
 def extract_resume_metadata(file_name, extracted_text, llm_model=None):
     text = extracted_text or ""
     llm_metadata = extract_metadata_with_ollama(text, model=llm_model)
+    print("\nLLM METADATA:")
+    print(llm_metadata)
+
     logger.info("Validated LLM metadata for %s: %s", file_name, llm_metadata)
     fallback_metadata = None
 
@@ -76,14 +80,20 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
         "Resume File Name": file_name or "",
         "Candidate Name": llm_metadata.get("candidate_name") or fallback_value("Candidate Name"),
         "Email": llm_metadata.get("email") or fallback_value("Email"),
-        "Phone Number": normalize_phone(llm_metadata.get("phone_number") or fallback_value("Phone Number")),
+        "Phone Number": (llm_metadata.get("phone_number") or fallback_value("Phone Number")),
     }
 
 
 def deterministic_metadata_fallback(file_name, text):
     logger.info("Using deterministic metadata fallback for %s", file_name)
+
+    candidate_name = extract_candidate_name(text)
+
+    if not looks_like_person_name(candidate_name):
+        candidate_name = extract_candidate_name_from_file_name(file_name)
+
     return {
-        "Candidate Name": extract_candidate_name(text) or extract_candidate_name_from_file_name(file_name),
+        "Candidate Name": candidate_name,
         "Email": extract_email(text),
         "Phone Number": extract_phone_number(text),
     }
@@ -101,26 +111,62 @@ def extract_phone_number(text):
         r"(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{3,5}\)?[\s.-]?)?\d{3,5}[\s.-]?\d{4}",
     ]
 
+    # Only search the resume header
+    header_text = "\n".join(text.splitlines()[:40])
+
     for pattern in phone_patterns:
-        for match in re.finditer(pattern, text):
+        for match in re.finditer(pattern, header_text):
+
             candidate = normalize_phone(match.group(0))
+            digits = re.sub(r"\D", "", candidate)
+
+            # Reject years
+            if re.match(r"^(19|20)\d{2}", digits):
+                continue
+
+            # Reject common year ranges
+            if digits in {
+                "20182022",
+                "20232024",
+                "20222024",
+                "20192023",
+                "20202024",
+                "20212025",
+            }:
+                continue
+
             if is_plausible_phone(candidate):
                 return candidate
+
     return ""
 
 
 def normalize_phone(value):
-    value = re.sub(r"\b(?:19|20)\d{2}\b.*$", "", str(value or "")).strip()
+    value = re.sub(
+        r"\b(?:19|20)\d{2}\b.*$",
+        "",
+        str(value or "")
+    ).strip()
+
     digits = re.sub(r"\D", "", value)
-    if len(digits) > 12 and digits.startswith("91"):
-        digits = digits[:12]
-    elif len(digits) > 10 and not value.startswith("+"):
-        digits = digits[:10]
-    if len(digits) == 12 and digits.startswith("91"):
+
+    # Indian number with country code
+    if digits.startswith("91") and len(digits) == 12:
         return f"+91 {digits[2:]}"
+
+    # Indian number with leading 0
+    if digits.startswith("0") and len(digits) == 11:
+        return digits
+
+    # Standard 10-digit number
     if len(digits) == 10:
         return digits
-    return re.sub(r"\s+", " ", value).strip(" .-)")
+
+    # International numbers
+    if 11 <= len(digits) <= 15:
+        return re.sub(r"\s+", " ", value).strip(" .-")
+
+    return ""
 
 
 def is_plausible_phone(value):

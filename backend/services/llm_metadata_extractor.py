@@ -29,6 +29,7 @@ EMPTY_METADATA = {
     "candidate_name": "",
     "email": "",
     "phone_number": "",
+    "alternate_phone_numbers": [],
 }
 
 
@@ -87,15 +88,24 @@ def build_metadata_prompt(context):
     return f"""
 Extract only this resume metadata. Return ONLY JSON:
 {{
-  "candidate_name": "...",
-  "email": "...",
-  "phone_number": "..."
+    "candidate_name": "...",
+    "email": "...",
+    "phone_number": "...",
+    "alternate_phone_numbers": []
 }}
 
 Rules:
 - Use only information explicitly present in the resume text.
 - candidate_name must be the person's full name, not a company, role, heading, location, or school.
 - Do not invent missing values. Use an empty string when unavailable.
+- If one phone number exists, return it in phone_number.
+- If multiple candidate phone numbers exist, return the first one in phone_number.
+- Put all additional candidate phone numbers in alternate_phone_numbers.
+- Ignore phone numbers belonging to references, emergency contacts, certifications, IDs, institutions, or other people.
+- Candidate name is usually near the email address and phone number at the top of the resume.
+- Do not return email usernames.
+- Do not return addresses, districts, states, locations, institutions, headings, objectives, or section titles.
+- If a name appears in an email address, prefer the actual name written separately in the resume.
 
 Resume text:
 {context}
@@ -107,12 +117,14 @@ def parse_and_validate_metadata(raw_response):
     data = parse_json_object(raw_response)
     if not data:
         return dict(EMPTY_METADATA)
-
     return {
         "candidate_name": validate_candidate_name(data.get("candidate_name", "")),
         "email": validate_email(data.get("email", "")),
         "phone_number": validate_phone(data.get("phone_number", "")),
+        "alternate_phone_numbers": validate_phone_list(data.get("alternate_phone_numbers", [])),
     }
+
+    
 
 
 def parse_json_object(raw_response):
@@ -140,6 +152,8 @@ def parse_json_object(raw_response):
 def validate_candidate_name(value):
     name = re.sub(r"\s+", " ", str(value or "")).strip(" .,:;|-")
     words = name.split()
+    if len(words) == 1 and len(name) > 15:
+        return ""
     if not 1 <= len(words) <= 6 or len(name) > 80:
         return ""
     if any(char.isdigit() for char in name):
@@ -148,12 +162,35 @@ def validate_candidate_name(value):
         return ""
 
     lowered = name.lower()
-    if re.fullmatch(
-        r"(resume|curriculum vitae|cv|profile|summary|objective|skills?|education|experience|"
-        r"projects?|certifications?|achievements?|languages?|contact|personal details?)",
-        lowered,
-    ):
+    bad_names = {
+        "resume",
+        "curriculum vitae",
+        "cv",
+        "profile",
+        "summary",
+        "objective",
+        "career objective",
+        "academic profile",
+        "academic details",
+        "education",
+        "experience",
+        "work experience",
+        "skills",
+        "technical skills",
+        "certifications",
+        "certification",
+        "projects",
+        "languages",
+        "contact",
+        "personal details",
+        "professional summary",
+    }
+    if lowered in bad_names:
         return ""
+    
+    if re.search(r"(gmail|yahoo|hotmail|outlook|cse|ece|it|mech|civil)$", lowered):
+        return ""
+    
     return name.title() if name.isupper() or name.islower() else name
 
 
@@ -163,10 +200,41 @@ def validate_email(value):
         return email
     return ""
 
+def validate_phone_list(values):
+
+    if not isinstance(values, list):
+        return []
+
+    validated = []
+
+    for value in values:
+
+        phone = validate_phone(value)
+
+        if phone:
+            validated.append(phone)
+
+    return list(dict.fromkeys(validated))
+
 
 def validate_phone(value):
-    phone = re.sub(r"\s+", " ", str(value or "")).strip(" .,-")
+    phone = str(value or "").strip()
+
+    # Reject dates / year ranges
+    if re.search(r"\b\d{1,2}/\d{4}\b", phone):
+        return ""
+
+    if "present" in phone.lower():
+        return ""
+
+    if re.search(r"\b(19|20)\d{2}\b", phone):
+        return ""
+
+    phone = re.sub(r"\s+", " ", phone).strip(" .,-")
+
     if not re.fullmatch(r"\+?[\d\s().-]+", phone):
         return ""
+
     digits = re.sub(r"\D", "", phone)
+
     return phone if 10 <= len(digits) <= 15 else ""

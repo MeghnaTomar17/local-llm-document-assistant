@@ -92,3 +92,11 @@ training_data/hard_cases/
 *.safetensors
 *.bin
 
+# Benchmark outputs
+benchmark_full.txt
+benchmark_results.txt
+failure_analysis.csv
+
+# Training / evaluation temporary files
+training_data/test_10/
+training_data/hard_cases/
