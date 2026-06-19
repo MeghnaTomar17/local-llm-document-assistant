@@ -63,26 +63,76 @@ class ResumeMetadataService:
 
 def extract_resume_metadata(file_name, extracted_text, llm_model=None):
     text = extracted_text or ""
-    llm_metadata = extract_metadata_with_ollama(text, model=llm_model)
+
+    llm_metadata = extract_metadata_with_ollama(
+        text,
+        model=llm_model,
+    )
+
     print("\nLLM METADATA:")
     print(llm_metadata)
 
-    logger.info("Validated LLM metadata for %s: %s", file_name, llm_metadata)
+    logger.info(
+        "Validated LLM metadata for %s: %s",
+        file_name,
+        llm_metadata,
+    )
+
     fallback_metadata = None
 
     def fallback_value(field):
         nonlocal fallback_metadata
+
         if fallback_metadata is None:
-            fallback_metadata = deterministic_metadata_fallback(file_name, text)
+            fallback_metadata = deterministic_metadata_fallback(
+                file_name,
+                text,
+            )
+
         return fallback_metadata[field]
 
+    candidate_name = llm_metadata.get("candidate_name", "")
+    email = llm_metadata.get("email", "")
+
+    if candidate_name and email:
+        email_user = email.split("@")[0].lower()
+
+        normalized_candidate = re.sub(
+            r"[^a-z]",
+            "",
+            candidate_name.lower(),
+        )
+
+        normalized_email_user = re.sub(
+            r"[^a-z]",
+            "",
+            email_user,
+        )
+
+        # Reject names that are basically the email username
+        # Reject only when the extracted "name" is a single word
+        # that is basically just the email username.
+    if (
+        len(candidate_name.split()) == 1
+        and normalized_candidate
+        and normalized_candidate in normalized_email_user
+    ):
+        candidate_name = ""
     return {
         "Resume File Name": file_name or "",
-        "Candidate Name": llm_metadata.get("candidate_name") or fallback_value("Candidate Name"),
-        "Email": llm_metadata.get("email") or fallback_value("Email"),
-        "Phone Number": (llm_metadata.get("phone_number") or fallback_value("Phone Number")),
+        "Candidate Name": (
+            candidate_name
+            or fallback_value("Candidate Name")
+        ),
+        "Email": (
+            llm_metadata.get("email")
+            or fallback_value("Email")
+        ),
+        "Phone Number": (
+            llm_metadata.get("phone_number")
+            or fallback_value("Phone Number")
+        ),
     }
-
 
 def deterministic_metadata_fallback(file_name, text):
     logger.info("Using deterministic metadata fallback for %s", file_name)
@@ -194,6 +244,25 @@ def extract_candidate_name(text):
         )
         if m:
             candidate = clean_line(m.group(1))
+            if looks_like_person_name(candidate):
+                return title_case_name(candidate)
+    
+    # Strategy 1.5: merge consecutive name-like lines
+
+    for i in range(len(lines) - 1):
+        first = lines[i].strip()
+        second = lines[i + 1].strip()
+
+        if (
+            len(first.split()) == 1
+            and len(second.split()) == 1
+            and first.isalpha()
+            and second.isalpha()
+            and len(first) > 2
+            and len(second) > 2
+        ):
+            candidate = f"{first} {second}"
+
             if looks_like_person_name(candidate):
                 return title_case_name(candidate)
 
@@ -353,6 +422,11 @@ def looks_like_person_name(value):
         "technical skills",
         "work experience",
         "personal details",
+        "open layers",
+        "academic details",
+        "academic profile",
+        "marriage colours",
+        "google cloud platform",
     ]
 
     if any(x in lower for x in bad_phrases):

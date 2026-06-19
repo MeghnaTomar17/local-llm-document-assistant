@@ -43,6 +43,7 @@ Thumbs.db
 uploads/
 backend/uploads/
 test_resumes/
+training_data/test_10/
 
 # Generated metadata
 metadata.txt
@@ -67,7 +68,7 @@ tmp/
 # Test files
 test.py
 check_extraction.py
-
+debug_name_failures.py
 # Python
 venv/
 __pycache__/
@@ -86,7 +87,7 @@ benchmark_results.csv
 
 # Training artifacts
 training_data/extracted_samples/
-training_data/test_10/
+training_data/test/
 training_data/hard_cases/
 *.gguf
 *.safetensors
@@ -100,3 +101,5 @@ failure_analysis.csv
 # Training / evaluation temporary files
 training_data/test_10/
 training_data/hard_cases/
+training_data/extracted_samples/
+training_data/debug-test/

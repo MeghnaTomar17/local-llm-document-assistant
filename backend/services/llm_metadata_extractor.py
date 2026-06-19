@@ -78,10 +78,20 @@ def resolve_model_name(model):
     clean = str(model or DEFAULT_MODEL).strip()
     return MODEL_ALIASES.get(clean.lower(), clean)
 
-
 def first_resume_lines(text, max_lines=DEFAULT_MAX_LINES):
     lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
-    return "\n".join(lines[:max_lines])
+
+    cleaned = []
+
+    for line in lines:
+        line = re.sub(
+            r'\b(?:[A-Za-z]\s+){2,}[A-Za-z]\b',
+            lambda m: m.group(0).replace(" ", ""),
+            line
+        )
+        cleaned.append(line)
+
+    return "\n".join(cleaned[:max_lines])
 
 
 def build_metadata_prompt(context):
@@ -105,7 +115,9 @@ Rules:
 - Candidate name is usually near the email address and phone number at the top of the resume.
 - Do not return email usernames.
 - Do not return addresses, districts, states, locations, institutions, headings, objectives, or section titles.
-- If a name appears in an email address, prefer the actual name written separately in the resume.
+- Never construct candidate names from email usernames.
+- Prefer the actual written name appearing in the resume.
+
 
 Resume text:
 {context}
