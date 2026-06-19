@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Clock,
@@ -39,21 +39,6 @@ const quickActions = [
   ["Career Highlights", "List the career highlights from the resume."],
   ["Recruiter Summary", "Write a concise recruiter summary using only the resume."],
 ];
-
-const compareCandidatesPrompt = `
-Compare the uploaded candidates in a visually clear, tidy format.
-
-Use one compact section per candidate with:
-- Candidate name
-- Key skills
-- Experience level
-- Education
-- Main strengths
-- Best-fit role or use case
-
-Then add a short final recommendation with the strongest candidate for each major role/skill area.
-Use only the uploaded resume context. Keep candidates separate. If a value is unavailable, write "Not provided".
-`.trim();
 
 function App() {
   const [stats, setStats] = useState(null);
@@ -106,7 +91,7 @@ function App() {
     try {
       const result = validFiles.length === 1
         ? await uploadDocument(validFiles[0])
-        : await uploadDocuments(validFiles, activeSessionId);
+        : await uploadDocuments(validFiles);
       setActiveSessionId(result.session_id);
       const [nextStats, nextMessages, sessionData] = await Promise.all([
         getStats(result.session_id),
@@ -267,10 +252,6 @@ function App() {
         </section>
 
         <div className="workspace-actions">
-          <button disabled={documents.length < 2 || busy} onClick={() => submitQuestion(compareCandidatesPrompt)}>
-            <Layers size={16} />
-            Compare Uploaded Candidates
-          </button>
           <button disabled={busy} onClick={handleClearWorkspace}>
             <Trash2 size={16} />
             Clear Workspace
@@ -489,3 +470,5 @@ function formatTime(value) {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
+
+

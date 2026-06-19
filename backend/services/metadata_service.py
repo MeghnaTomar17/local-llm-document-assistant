@@ -109,16 +109,7 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
             "",
             email_user,
         )
-
-        # Reject names that are basically the email username
-        # Reject only when the extracted "name" is a single word
-        # that is basically just the email username.
-        if (
-            len(candidate_name.split()) == 1
-            and normalized_candidate
-            and normalized_candidate in normalized_email_user
-        ):
-            candidate_name = ""
+   
     return {
         "Resume File Name": file_name or "",
         "Candidate Name": (

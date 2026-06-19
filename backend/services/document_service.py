@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 import logging
 from pathlib import Path
 import shutil
@@ -9,7 +9,6 @@ from pdf_processor import (
     ask_llm,
     create_vector_store,
     export_chat,
-    is_comparison_query,
     process_document,
 )
 from backend.services.metadata_service import ResumeMetadataService
@@ -24,7 +23,6 @@ class ResumeSession:
         self.session_id = session_id
         self.documents = []
         self.vector_store = vector_store
-        self.metadata_service = ResumeMetadataService(output_dir=SESSION_METADATA_ROOT / session_id)
         self.messages = []
         self.created_at = datetime.now().isoformat(timespec="seconds")
         self.updated_at = self.created_at
@@ -35,11 +33,7 @@ class ResumeSession:
 
     @property
     def display_name(self):
-        if not self.documents:
-            return "Empty resume session"
-        if len(self.documents) == 1:
-            return self.documents[0]["name"]
-        return f"{self.documents[0]['name']} + {len(self.documents) - 1} more"
+        return self.document["name"] if self.document else "Empty resume session"
 
     def add_document(self, document):
         self.documents.append(document)
@@ -51,6 +45,7 @@ class ResumeSession:
 
 class DocumentService:
     def __init__(self):
+        # Clean legacy per-session metadata folders. Metadata is now consolidated only.
         shutil.rmtree(SESSION_METADATA_ROOT, ignore_errors=True)
         self.sessions = {}
         self.active_session_id = None
@@ -81,25 +76,26 @@ class DocumentService:
         return session
 
     def add_document(self, file_path, display_name=None, session_id=None):
-        result = self.add_documents([(file_path, display_name)], session_id=session_id)
+        result = self.add_documents([(file_path, display_name)])
         if not result["documents"]:
             detail = result["errors"][0]["error"] if result["errors"] else "Resume upload failed."
             raise RuntimeError(detail)
         return result["session"]
 
     def add_documents(self, file_items, session_id=None):
-        session = self.switch_session(session_id) if session_id else self.active_session
-        if session is None:
-            session = self.create_session()
-
         added_documents = []
         errors = []
+        sessions = []
 
         for file_path, display_name in file_items:
+            session = self.create_session()
             try:
                 document = self.process_resume_for_session(session, file_path, display_name)
                 added_documents.append(document)
+                sessions.append(session)
             except Exception as exc:
+                self.sessions.pop(session.session_id, None)
+                self.active_session_id = sessions[-1].session_id if sessions else None
                 logger.exception("Failed to process resume %s: %s", display_name or file_path, exc)
                 errors.append(
                     {
@@ -108,26 +104,24 @@ class DocumentService:
                     }
                 )
 
-        session.touch()
         return {
-            "session": session,
+            "session": sessions[-1] if sessions else None,
+            "sessions": sessions,
             "documents": added_documents,
             "errors": errors,
         }
 
     def process_resume_for_session(self, session, file_path, display_name=None):
-        reset_store = len(session.documents) == 0
         document = process_document(
             file_path,
             vector_store=session.vector_store,
-            reset_store=reset_store,
+            reset_store=True,
             document_name=display_name,
         )
-        metadata = session.metadata_service.add_resume(
+        metadata = self.metadata_service.add_resume(
             document["name"],
             document.get("text", ""),
         )
-        self.metadata_service.add_record(metadata)
         document["metadata"] = metadata
         session.add_document(document)
         return document
@@ -162,7 +156,7 @@ class DocumentService:
         try:
             result = ask_llm(
                 question,
-                self.documents_for_question(question, session),
+                session.documents,
                 session.messages,
                 top_k=top_k,
                 vector_store=session.vector_store,
@@ -172,6 +166,7 @@ class DocumentService:
                 session.messages.pop()
             session.touch()
             raise
+
         assistant_message = {
             "role": "assistant",
             "content": result["answer"],
@@ -186,7 +181,7 @@ class DocumentService:
         return {
             "answer": result["answer"],
             "retrieval": result["retrieval"],
-            "prompt_size": result["prompt_size"],
+            "prompt_size": len(result.get("answer", "")) if "prompt_size" not in result else result["prompt_size"],
             "message": assistant_message,
             "session_id": session.session_id,
         }
@@ -222,11 +217,6 @@ class DocumentService:
     def chat_history(self, session_id=None):
         session = self.switch_session(session_id) if session_id else self.active_session
         return session.messages if session else []
-
-    def documents_for_question(self, question, session):
-        if is_comparison_query(question):
-            return session.documents
-        return session.documents
 
     def public_sessions(self):
         return [
@@ -280,6 +270,11 @@ class DocumentService:
                 "vector_chunks": [],
                 "last_retrieval": None,
                 "final_context": "",
+                "metadata_records": self.metadata_service.records,
+                "metadata_files": {
+                    "txt": str(self.metadata_service.txt_path),
+                    "csv": str(self.metadata_service.csv_path),
+                },
             }
 
         last_retrieval = None
@@ -304,43 +299,17 @@ class DocumentService:
             "last_retrieval": last_retrieval,
             "retrieved_chunks": last_retrieval.get("chunks", []) if last_retrieval else [],
             "final_context": last_retrieval.get("context", "") if last_retrieval else "",
-            "metadata_records": session.metadata_service.records,
-            "consolidated_metadata_records": self.metadata_service.records,
+            "metadata_records": self.metadata_service.records,
             "metadata_files": {
-                "txt": str(session.metadata_service.txt_path),
-                "csv": str(session.metadata_service.csv_path),
-            },
-            "consolidated_metadata_files": {
                 "txt": str(self.metadata_service.txt_path),
                 "csv": str(self.metadata_service.csv_path),
             },
         }
 
     def metadata_payload(self, session_id=None):
-        session = self.switch_session(session_id) if session_id else self.active_session
-        if not session:
-            return {
-                "records": [],
-                "consolidated_records": self.metadata_service.records,
-                "files": {
-                    "txt": None,
-                    "csv": None,
-                },
-                "consolidated_files": {
-                    "txt": str(self.metadata_service.txt_path),
-                    "csv": str(self.metadata_service.csv_path),
-                },
-            }
-
         return {
-            "session_id": session.session_id,
-            "records": session.metadata_service.records,
-            "consolidated_records": self.metadata_service.records,
+            "records": self.metadata_service.records,
             "files": {
-                "txt": str(session.metadata_service.txt_path),
-                "csv": str(session.metadata_service.csv_path),
-            },
-            "consolidated_files": {
                 "txt": str(self.metadata_service.txt_path),
                 "csv": str(self.metadata_service.csv_path),
             },
