@@ -29,6 +29,7 @@ EMPTY_METADATA = {
     "candidate_name": "",
     "email": "",
     "phone_number": "",
+    "city": "",
     "alternate_phone_numbers": [],
 }
 
@@ -101,6 +102,7 @@ Extract only this resume metadata. Return ONLY JSON:
     "candidate_name": "...",
     "email": "...",
     "phone_number": "...",
+    "city": "...",
     "alternate_phone_numbers": []
 }}
 
@@ -117,6 +119,13 @@ Rules:
 - Do not return addresses, districts, states, locations, institutions, headings, objectives, or section titles.
 - Never construct candidate names from email usernames.
 - Prefer the actual written name appearing in the resume.
+- Extract candidate city when clearly available.
+- Prefer Current Location.
+- Otherwise use Address.
+- Otherwise use City.
+- Otherwise use District.
+- Return only the city or district name.
+- Do not return full addresses.
 
 
 Resume text:
@@ -133,6 +142,7 @@ def parse_and_validate_metadata(raw_response):
         "candidate_name": validate_candidate_name(data.get("candidate_name", "")),
         "email": validate_email(data.get("email", "")),
         "phone_number": validate_phone(data.get("phone_number", "")),
+        "city": validate_city(data.get("city", "")),
         "alternate_phone_numbers": validate_phone_list(data.get("alternate_phone_numbers", [])),
     }
 
@@ -211,6 +221,23 @@ def validate_email(value):
     if re.fullmatch(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", email):
         return email
     return ""
+
+def validate_city(value):
+    city = re.sub(r"\s+", " ", str(value or "")).strip(" .,:;|-")
+
+    if len(city) < 2:
+        return ""
+
+    if len(city) > 40:
+        return ""
+
+    if any(char.isdigit() for char in city):
+        return ""
+
+    if not re.fullmatch(r"[A-Za-z .'-]+", city):
+        return ""
+
+    return city.title()
 
 def validate_phone_list(values):
 

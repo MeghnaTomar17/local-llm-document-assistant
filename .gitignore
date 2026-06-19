@@ -69,6 +69,8 @@ tmp/
 test.py
 check_extraction.py
 debug_name_failures.py
+test_city.py
+
 # Python
 venv/
 __pycache__/

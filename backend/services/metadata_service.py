@@ -1,4 +1,4 @@
-from os import name
+
 from pathlib import Path
 import csv
 import logging
@@ -13,6 +13,7 @@ METADATA_FIELDS = [
     "Candidate Name",
     "Email",
     "Phone Number",
+    "City",
 ]
 
 
@@ -112,12 +113,12 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
         # Reject names that are basically the email username
         # Reject only when the extracted "name" is a single word
         # that is basically just the email username.
-    if (
-        len(candidate_name.split()) == 1
-        and normalized_candidate
-        and normalized_candidate in normalized_email_user
-    ):
-        candidate_name = ""
+        if (
+            len(candidate_name.split()) == 1
+            and normalized_candidate
+            and normalized_candidate in normalized_email_user
+        ):
+            candidate_name = ""
     return {
         "Resume File Name": file_name or "",
         "Candidate Name": (
@@ -131,6 +132,10 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
         "Phone Number": (
             llm_metadata.get("phone_number")
             or fallback_value("Phone Number")
+        ),
+        "City": (
+            llm_metadata.get("city")
+            or fallback_value("City")
         ),
     }
 
@@ -146,6 +151,7 @@ def deterministic_metadata_fallback(file_name, text):
         "Candidate Name": candidate_name,
         "Email": extract_email(text),
         "Phone Number": extract_phone_number(text),
+        "City": extract_city(text),
     }
 
 
@@ -190,6 +196,8 @@ def extract_phone_number(text):
 
     return ""
 
+def extract_city(text):
+    return ""
 
 def normalize_phone(value):
     value = re.sub(
