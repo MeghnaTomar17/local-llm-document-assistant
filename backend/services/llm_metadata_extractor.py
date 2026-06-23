@@ -29,10 +29,13 @@ EMPTY_METADATA = {
     "candidate_name": "",
     "email": "",
     "phone_number": "",
-    "city": "",
     "alternate_phone_numbers": [],
 }
-
+EMPTY_ENRICHMENT = {
+    "skills": [],
+    "cities": [],
+    "years_of_experience": 0,
+}
 
 class LLMMetadataExtractor:
     def __init__(self, model=None, ollama_url=None, max_lines=DEFAULT_MAX_LINES, timeout=None):
@@ -74,6 +77,51 @@ class LLMMetadataExtractor:
 def extract_metadata_with_ollama(text, model=None, max_lines=DEFAULT_MAX_LINES):
     return LLMMetadataExtractor(model=model, max_lines=max_lines).extract(text)
 
+def extract_enrichment_with_ollama(
+    text,
+    model=None,
+    max_lines=DEFAULT_MAX_LINES,
+):
+    context = first_resume_lines(text, max_lines)
+
+    if not context:
+        return dict(EMPTY_ENRICHMENT)
+
+    try:
+        response = requests.post(
+            DEFAULT_OLLAMA_URL,
+            json={
+                "model": resolve_model_name(
+                    model or DEFAULT_MODEL
+                ),
+                "prompt": build_enrichment_prompt(context),
+                "stream": False,
+                "format": "json",
+                "options": {
+                    "temperature": 0,
+                    "num_predict": 250,
+                },
+            },
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+        )
+
+        response.raise_for_status()
+
+        raw_response = response.json().get(
+            "response",
+            "",
+        )
+
+    except Exception as exc:
+        logger.warning(
+            "Ollama enrichment extraction failed: %s",
+            exc,
+        )
+        return dict(EMPTY_ENRICHMENT)
+
+    return parse_and_validate_enrichment(
+        raw_response
+    )
 
 def resolve_model_name(model):
     clean = str(model or DEFAULT_MODEL).strip()
@@ -102,7 +150,6 @@ Extract only this resume metadata. Return ONLY JSON:
     "candidate_name": "...",
     "email": "...",
     "phone_number": "...",
-    "city": "...",
     "alternate_phone_numbers": []
 }}
 
@@ -119,20 +166,62 @@ Rules:
 - Do not return addresses, districts, states, locations, institutions, headings, objectives, or section titles.
 - Never construct candidate names from email usernames.
 - Prefer the actual written name appearing in the resume.
-- Extract candidate city when clearly available.
-- Prefer Current Location.
-- Otherwise use Address.
-- Otherwise use City.
-- Otherwise use District.
-- Return only the city or district name.
-- Do not return full addresses.
 
 
 Resume text:
 {context}
 """.strip()
 
+def build_enrichment_prompt(context):
+    return f"""
+Extract ONLY the following information.
 
+Return ONLY JSON:
+
+{{
+    "skills": [],
+    "cities": [],
+    "years_of_experience": 0
+}}
+
+Rules:
+
+- Extract technical skills only.
+- Ignore soft skills.
+- Include programming languages, databases,
+  GIS tools, cloud tools, frameworks,
+  libraries and software tools.
+
+- Extract only city names.
+
+- Do not return states.
+- Do not return countries.
+- Do not return districts.
+- Do not return taluks.
+- Do not return blocks.
+- Do not return villages.
+- Do not return pincodes.
+- Do not return full addresses.
+
+- Return only actual city names.
+
+Examples:
+
+Good:
+["Chennai", "Bengaluru", "Trivandrum"]
+
+Bad:
+["Tamil Nadu", "India", "Kanyakumari District", "Athoor Block"]
+
+- Calculate total professional experience in years.
+- Use employment, internships, freelancing,
+  and contract work.
+- Ignore education duration.
+- Return 0 if no experience exists.
+
+Resume text:
+{context}
+""".strip()
 
 def parse_and_validate_metadata(raw_response):
     data = parse_json_object(raw_response)
@@ -142,11 +231,24 @@ def parse_and_validate_metadata(raw_response):
         "candidate_name": validate_candidate_name(data.get("candidate_name", "")),
         "email": validate_email(data.get("email", "")),
         "phone_number": validate_phone(data.get("phone_number", "")),
-        "city": validate_city(data.get("city", "")),
         "alternate_phone_numbers": validate_phone_list(data.get("alternate_phone_numbers", [])),
     }
 
-    
+def parse_and_validate_enrichment(raw_response):
+    data = parse_json_object(raw_response)
+
+    if not data:
+        return dict(EMPTY_ENRICHMENT)
+
+    return {
+        "skills": data.get("skills", []),
+        "cities": validate_cities(data.get("cities", [])),
+        "years_of_experience":
+            data.get(
+                "years_of_experience",
+                0,
+            ),
+    }   
 
 
 def parse_json_object(raw_response):
@@ -225,10 +327,10 @@ def validate_email(value):
 def validate_city(value):
     city = re.sub(r"\s+", " ", str(value or "")).strip(" .,:;|-")
 
-    if len(city) < 2:
+    if not city:
         return ""
 
-    if len(city) > 40:
+    if len(city) < 2 or len(city) > 40:
         return ""
 
     if any(char.isdigit() for char in city):
@@ -237,7 +339,72 @@ def validate_city(value):
     if not re.fullmatch(r"[A-Za-z .'-]+", city):
         return ""
 
+    lower = city.lower()
+
+    bad_terms = {
+        "india",
+        "tamil nadu",
+        "kerala",
+        "karnataka",
+        "andhra pradesh",
+        "telangana",
+        "west bengal",
+        "maharashtra",
+        "gujarat",
+        "district",
+        "taluk",
+        "block",
+        "street",
+        "road",
+        "village",
+        "technology",
+        "technologies",
+        "software",
+        "solutions",
+        "private",
+        "limited",
+        "ltd",
+        "pvt",
+        "company",
+        "office",
+    }
+
+    if lower in bad_terms:
+        return ""
+
+    if any(term in lower for term in [
+        "district",
+        "taluk",
+        "block",
+        "street",
+        "road",
+        "village",
+        "technology",
+        "software",
+        "solutions",
+        "company",
+    ]):
+        return ""
+
+    if len(city.split()) > 3:
+        return ""
+
     return city.title()
+
+def validate_cities(values):
+    if not isinstance(values, list):
+        return []
+
+    cleaned = []
+
+    for city in values:
+        valid_city = validate_city(city)
+
+        if valid_city:
+            cleaned.append(valid_city)
+
+    return list(dict.fromkeys(cleaned))
+
 
 def validate_phone_list(values):
 
@@ -277,3 +444,4 @@ def validate_phone(value):
     digits = re.sub(r"\D", "", phone)
 
     return phone if 10 <= len(digits) <= 15 else ""
+

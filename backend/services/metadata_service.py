@@ -1,10 +1,14 @@
 
+from datetime import datetime
 from pathlib import Path
 import csv
 import logging
 import re
 
-from backend.services.llm_metadata_extractor import extract_metadata_with_ollama
+from backend.services.llm_metadata_extractor import (
+    extract_metadata_with_ollama,
+    extract_enrichment_with_ollama,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +17,10 @@ METADATA_FIELDS = [
     "Candidate Name",
     "Email",
     "Phone Number",
-    "City",
+    "Cities",
+    "Skills",
+    "Years Of Experience",
+    "Fresher",
 ]
 
 
@@ -70,8 +77,21 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
         model=llm_model,
     )
 
+    llm_enrichment = extract_enrichment_with_ollama(
+        text,
+        model=llm_model,
+    )
+
+    deterministic_experience = extract_years_of_experience(text)
+
+    print("\nDETERMINISTIC EXPERIENCE:")
+    print(deterministic_experience)
+
     print("\nLLM METADATA:")
     print(llm_metadata)
+
+    print("\nLLM ENRICHMENT:")
+    print(llm_enrichment)
 
     logger.info(
         "Validated LLM metadata for %s: %s",
@@ -124,9 +144,22 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
             llm_metadata.get("phone_number")
             or fallback_value("Phone Number")
         ),
-        "City": (
-            llm_metadata.get("city")
-            or fallback_value("City")
+
+        "Cities": (
+            llm_enrichment.get("cities", [])
+        ),
+
+        "Skills": (
+            llm_enrichment.get("skills", [])
+        ),
+
+        "Years Of Experience": deterministic_experience,
+        
+
+        "Fresher": (
+            "Yes"
+            if deterministic_experience == 0
+            else "No"
         ),
     }
 
@@ -453,3 +486,46 @@ def title_case_name(value):
     if value.isupper() or value.islower():
         return value.title()
     return value
+
+def extract_years_of_experience(text):
+
+    text_lower = text.lower()
+
+    patterns = [
+        r'(\d+(?:\.\d+)?)\+?\s+years?\s+of\s+experience',
+        r'over\s+(\d+(?:\.\d+)?)\s+years?',
+        r'(\d+(?:\.\d+)?)\+?\s+yrs?\s+of\s+experience',
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text_lower)
+
+        if match:
+            return float(match.group(1))
+
+    current_year = datetime.now().year
+
+    year_ranges = re.findall(
+        r"(20\d{2})\s*[-–]\s*(present|20\d{2})",
+        text_lower,
+        flags=re.IGNORECASE,
+    )
+
+    total_years = 0
+
+    for start_year, end_year in year_ranges:
+
+        start_year = int(start_year)
+
+        if str(end_year).lower() == "present":
+            end_year = current_year
+        else:
+            end_year = int(end_year)
+
+        if end_year >= start_year:
+            total_years += end_year - start_year
+
+    if total_years > 0:
+        return round(total_years, 1)
+
+    return 0
