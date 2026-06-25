@@ -12,6 +12,7 @@ from pdf_processor import (
     process_document,
 )
 from backend.services.metadata_service import ResumeMetadataService
+from backend.services.resume_service import persist_resume_metadata
 
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,13 @@ class DocumentService:
             document["name"],
             document.get("text", ""),
         )
+        resume = persist_resume_metadata(
+            Path(file_path),
+            document["name"],
+            metadata,
+        )
         document["metadata"] = metadata
+        document["resume_id"] = str(resume.id)
         session.add_document(document)
         return document
 
@@ -245,6 +252,7 @@ class DocumentService:
             "chunk_count": document["chunk_count"],
             "indexed_at": document["indexed_at"],
             "metadata": document.get("metadata", {}),
+            "resume_id": document.get("resume_id"),
             "extraction_method": document.get("extraction_method"),
             "extraction_quality": document.get("extraction_quality", {}),
         }
