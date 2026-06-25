@@ -1,0 +1,35 @@
+Resume,Name,Email,Phone,Cities,Skills,Experience,Overall,Notes
+Abinesh CV.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+Ajay 1.pdf,Pass,Pass,Pass,Pass,Pass,Review,Review,Experience extracted as 0 verify actual experience
+Ajay_Resume.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+Akila_GIS Developer_CV 1.docx,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+AmarResume.docx,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+ANUPRIYA.pdf,Pass,Pass,Pass,Review,Pass,Pass,Review,Verify Chennai city extraction
+Anurag Ghosh CV.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+ARCHANA BAIRAGI.pdf,Pass,Pass,Pass,Review,Pass,Review,Review,City list suspicious and experience may be incorrect
+Arikrishnan Profile.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+Arul_Python_Developer_Hexamap_TT.pdf,Pass,Pass,Pass,Review,Pass,Pass,Review,Verify extra cities detected
+Arun Prakash.Resume (1).pdf,Pass,Pass,Pass,Pass,Pass,Review,Review,Expected experience around 3 years
+B.Karishma_2025 2 (1).pdf,Pass,Pass,Review,Pass,Pass,Review,Review,Phone appears truncated
+BALAJI_GOPALAKRISHNAN_BALAMURUGAN.pdf,Pass,Pass,Review,Pass,Pass,Review,Review,Experience likely missed
+Balan-Gunasekaran-GIS Analyst.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+beauty_biodata.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+BEAUTY_GHOSH_CV1.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+Bharath Resume (1).pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+Bhumika_Goyal_Updated_Resume_1725527820524_Bhumika Goyal.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+CV.pdf,Pass,Pass,Pass,Review,Pass,Pass,Review,Verify city extraction
+CV_2024090300413147.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+CV_Anjali.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+cvHaseeb_H.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+Debapriya_Sarkar_CV.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+DEEPAK CHAUHAN-.pdf,Pass,Pass,Pass,Pass,Pass,Review,Review,Senior profile but extracted 0 experience
+Deepak-M-GIS-CV 1 (1).pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+Desika_Resume.pdf,Review,Pass,Pass,Pass,Pass,Pass,Review,Malformed candidate name
+Dharanielangovan_ Cv.pdf,Review,Pass,Pass,Pass,Pass,Pass,Review,Verify candidate name
+dhinesh_resume.docx,Pass,Pass,Pass,Pass,Pass,Pass,Pass,
+DHIVYAN Resume.pdf,Pass,Pass,Pass,Review,Pass,Pass,Review,No city extracted
+DIPSHIKHA MONDAL CV-2.pdf,Pass,Pass,Pass,Review,Pass,Pass,Review,Contains WB in city list
+Divya_CV.pdf,Pass,Pass,Pass,Review,Pass,Review,Review,Verify cities and experience
+Diya_CV.docx,Pass,Pass,Pass,Review,Pass,Review,Review,Verify cities and experience
+Durga_Resume 1.pdf,Pass,Pass,Pass,Pass,Review,Pass,Review,CGPA extracted as skill
+Ganga Kalyani S CV.pdf,Pass,Pass,Pass,Pass,Pass,Pass,Pass,

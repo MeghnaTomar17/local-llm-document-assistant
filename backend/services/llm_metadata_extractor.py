@@ -34,8 +34,8 @@ EMPTY_METADATA = {
 EMPTY_ENRICHMENT = {
     "skills": [],
     "cities": [],
-    "years_of_experience": 0,
 }
+
 
 class LLMMetadataExtractor:
     def __init__(self, model=None, ollama_url=None, max_lines=DEFAULT_MAX_LINES, timeout=None):
@@ -123,6 +123,7 @@ def extract_enrichment_with_ollama(
         raw_response
     )
 
+
 def resolve_model_name(model):
     clean = str(model or DEFAULT_MODEL).strip()
     return MODEL_ALIASES.get(clean.lower(), clean)
@@ -181,7 +182,7 @@ Return ONLY JSON:
 {{
     "skills": [],
     "cities": [],
-    "years_of_experience": 0
+
 }}
 
 Rules:
@@ -213,15 +214,13 @@ Good:
 Bad:
 ["Tamil Nadu", "India", "Kanyakumari District", "Athoor Block"]
 
-- Calculate total professional experience in years.
-- Use employment, internships, freelancing,
-  and contract work.
-- Ignore education duration.
-- Return 0 if no experience exists.
+
 
 Resume text:
 {context}
 """.strip()
+
+
 
 def parse_and_validate_metadata(raw_response):
     data = parse_json_object(raw_response)
@@ -241,14 +240,16 @@ def parse_and_validate_enrichment(raw_response):
         return dict(EMPTY_ENRICHMENT)
 
     return {
-        "skills": data.get("skills", []),
-        "cities": validate_cities(data.get("cities", [])),
-        "years_of_experience":
-            data.get(
-                "years_of_experience",
-                0,
-            ),
-    }   
+        "skills": validate_skills(
+            data.get("skills", [])
+        ),
+
+        "cities": validate_cities(
+            data.get("cities", [])
+        ),
+
+    }
+
 
 
 def parse_json_object(raw_response):
@@ -445,3 +446,467 @@ def validate_phone(value):
 
     return phone if 10 <= len(digits) <= 15 else ""
 
+def validate_skills(skills):
+
+    if not isinstance(skills, list):
+        return []
+
+    bad_patterns = [
+        r"cgpa",
+        r"gpa",
+        r"percentage",
+        r"mark",
+        r"score",
+        r"english",
+        r"tamil",
+        r"hindi",
+        r"bengali",
+        r"mother tongue",
+        r"date of birth",
+        r"nationality",
+        r"address",
+        r"phone",
+        r"email",
+        r"hard working",
+        r"fast learner",
+        r"team player",
+        r"leadership",
+        r"communication skills?",
+        r"problem solving",
+        r"self motivated",
+    ]
+
+    validated = []
+
+    for skill in skills:
+
+        skill = str(skill).strip()
+
+        if len(skill) < 2:
+            continue
+
+        if len(skill) > 80:
+            continue
+
+        if any(
+            re.search(pattern, skill, re.IGNORECASE)
+            for pattern in bad_patterns
+        ):
+            continue
+
+        validated.append(skill)
+
+    return list(dict.fromkeys(validated))
+
+def validate_experience(value):
+
+    value = str(value).strip()
+
+    if value == "-":
+        return "-"
+
+    try:
+
+        years = float(value)
+
+        if years < 0:
+            return "0"
+
+        if years > 50:
+            return "-"
+
+        return str(round(years, 1))
+
+    except:
+        return "-"
+    
+def _legacy_is_fresher_keyword_match(text):
+
+    text_lower = str(text).lower()
+
+    experience_sections = [
+        "professional experience",
+        "work experience",
+        "employment history",
+        "career history",
+        "work history",
+        "professional background",
+    ]
+
+    internship_sections = [
+        "internship",
+        "intern",
+        "summer internship",
+        "industrial training",
+        "training program",
+    ]
+
+    # Any experience section found
+    if any(section in text_lower for section in experience_sections):
+        return False
+
+    # Internship/training found
+    if any(section in text_lower for section in internship_sections):
+        return False
+
+    # Professional designations with dates
+    designation_patterns = [
+        r'\bgis analyst\b',
+        r'\bdeveloper\b',
+        r'\bsoftware engineer\b',
+        r'\bengineer\b',
+        r'\bmanager\b',
+        r'\bconsultant\b',
+        r'\bexecutive\b',
+        r'\banalyst\b',
+        r'\bassociate\b',
+        r'\bspecialist\b',
+    ]
+
+    has_designation = any(
+        re.search(pattern, text_lower)
+        for pattern in designation_patterns
+    )
+
+    has_dates = bool(
+        re.search(
+            r'20\d{2}\s*[-–]\s*(present|current|20\d{2})',
+            text_lower,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    if has_designation and has_dates:
+        return False
+
+    return True
+
+
+EXPERIENCE_SECTION_HEADERS = (
+    "experience",
+    "experiences",
+    "professional experience",
+    "professional experiences",
+    "professional work experience",
+    "work experience",
+    "work experiences",
+    "working experience",
+    "employment experience",
+    "employment",
+    "employment details",
+    "employment history",
+    "career history",
+    "career experience",
+    "work history",
+    "professional background",
+    "relevant experience",
+    "industry experience",
+    "positions held",
+)
+
+NON_EXPERIENCE_SECTION_HEADERS = (
+    "education",
+    "academic background",
+    "qualification",
+    "qualifications",
+    "technical skills",
+    "skills",
+    "projects",
+    "academic projects",
+    "personal projects",
+    "certifications",
+    "certification",
+    "courses",
+    "workshops",
+    "achievements",
+    "awards",
+    "activities",
+    "languages",
+    "interests",
+    "hobbies",
+    "summary",
+    "profile",
+    "objective",
+    "declaration",
+    "references",
+)
+
+NON_PROFESSIONAL_PATTERNS = (
+    r"\bintern(ship)?s?\b",
+    r"\bsummer intern(ship)?\b",
+    r"\bwinter intern(ship)?\b",
+    r"\bindustrial training\b",
+    r"\btraining program(me)?\b",
+    r"\btrainee\b",
+    r"\bapprentice(ship)?\b",
+    r"\bacademic project\b",
+    r"\bcollege project\b",
+    r"\bminor project\b",
+    r"\bmajor project\b",
+    r"\bcapstone\b",
+    r"\bcertification\b",
+    r"\bworkshop\b",
+)
+
+EMPLOYMENT_TYPE_PATTERNS = (
+    r"\bfull[-\s]?time\b",
+    r"\bpart[-\s]?time\b",
+    r"\bcontract(or)?\b",
+    r"\bfreelanc(e|er|ing)\b",
+    r"\bconsult(ant|ing)\b",
+    r"\bpermanent\b",
+    r"\bemployee\b",
+    r"\bpayroll\b",
+)
+
+PROFESSIONAL_ROLE_PATTERNS = (
+    r"\bsoftware engineer\b",
+    r"\bengineer\b",
+    r"\bdeveloper\b",
+    r"\bprogrammer\b",
+    r"\banalyst\b",
+    r"\bconsultant\b",
+    r"\bmanager\b",
+    r"\bexecutive\b",
+    r"\bassociate\b",
+    r"\bspecialist\b",
+    r"\badministrator\b",
+    r"\barchitect\b",
+    r"\bdesigner\b",
+    r"\btester\b",
+    r"\bqa\b",
+    r"\bcoordinator\b",
+    r"\bofficer\b",
+    r"\blead\b",
+    r"\bsupervisor\b",
+    r"\bgraphic designer\b",
+    r"\bdigital designer\b",
+    r"\bsupport engineer\b",
+    r"\btechnical support\b",
+    r"\bapplication support\b",
+)
+
+DATE_RANGE_PATTERN = re.compile(
+    r"\(?\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|"
+    r"nov(?:ember)?|dec(?:ember)?)?\s*"
+    r"(?:19|20)\d{2}\s*(?:-|to|till|until)\s*"
+    r"(?:present|current|now|till\s+date|date|(?:19|20)\d{2}|"
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|"
+    r"nov(?:ember)?|dec(?:ember)?)?\s*(?:19|20)\d{2})\b\)?",
+    re.IGNORECASE,
+)
+
+DURATION_PATTERN = re.compile(
+    r"\b\d+(?:\.\d+)?\+?\s*(?:years?|yrs?|months?|mos?)\b",
+    re.IGNORECASE,
+)
+
+COMPANY_SIGNAL_PATTERN = re.compile(
+    r"\b(?:pvt\.?|ltd\.?|private limited|inc\.?|llc|llp|corp\.?|"
+    r"corporation|company|technologies|technology|solutions|systems|"
+    r"services|consultancy|labs|global)\b",
+    re.IGNORECASE,
+)
+
+
+def _normalize_resume_text(text):
+    normalized = str(text or "")
+    normalized = normalized.replace("\u00a0", " ")
+    normalized = normalized.replace("\u2013", "-").replace("\u2014", "-")
+    normalized = normalized.replace("\u00e2\u20ac\u201c", "-")
+    normalized = normalized.replace("\u00e2\u20ac\u009d", "-")
+    return normalized
+
+
+def _clean_header_line(line):
+    line = re.sub(r"^[\s\-\u2022*#|:]+", "", line.strip().lower())
+    line = re.sub(r"^\[page\s+\d+\]\s*", "", line)
+    line = re.sub(r"[\s:|/_\-]+$", "", line)
+    line = re.sub(r"\s+", " ", line)
+    return line
+
+
+def _is_section_header(line, headers):
+    cleaned = _clean_header_line(line)
+
+    if not cleaned or len(cleaned.split()) > 5:
+        return False
+
+    if cleaned in headers:
+        return True
+
+    return any(
+        header in cleaned
+        and re.fullmatch(rf"(?:[\w& ]+\s+)?{re.escape(header)}(?:\s+[\w& ]+)?", cleaned)
+        for header in headers
+    )
+
+
+def _extract_experience_sections(text):
+    lines = _normalize_resume_text(text).splitlines()
+    sections = []
+    current = []
+    in_experience = False
+
+    all_known_headers = set(EXPERIENCE_SECTION_HEADERS) | set(NON_EXPERIENCE_SECTION_HEADERS)
+
+    for line in lines:
+        if _is_section_header(line, EXPERIENCE_SECTION_HEADERS):
+            if current:
+                sections.append("\n".join(current))
+            current = []
+            in_experience = True
+            continue
+
+        if in_experience and _is_section_header(line, all_known_headers):
+            if current:
+                sections.append("\n".join(current))
+            current = []
+            in_experience = False
+            continue
+
+        if in_experience:
+            current.append(line)
+
+    if current:
+        sections.append("\n".join(current))
+
+    return [section for section in sections if section.strip()]
+
+
+def _split_experience_entries(section_text):
+    lines = [line.strip() for line in section_text.splitlines()]
+    entries = []
+    current = []
+
+    for line in lines:
+        if not line:
+            if current:
+                entries.append(" ".join(current))
+                current = []
+            continue
+
+        starts_new_entry = bool(
+            current
+            and (
+                DATE_RANGE_PATTERN.search(line)
+                or re.match(r"^[\-\u2022*]\s+", line)
+            )
+        )
+
+        if starts_new_entry:
+            entries.append(" ".join(current))
+            current = []
+
+        current.append(line)
+
+        if len(current) >= 5:
+            entries.append(" ".join(current))
+            current = []
+
+    if current:
+        entries.append(" ".join(current))
+
+    non_empty_lines = [line for line in lines if line]
+    for index in range(len(non_empty_lines)):
+        entries.append(" ".join(non_empty_lines[index:index + 4]))
+        entries.append(" ".join(non_empty_lines[index:index + 6]))
+
+    return entries
+
+
+def _has_any_pattern(text, patterns):
+    return any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns)
+
+
+def _is_non_professional_entry(entry):
+    return _has_any_pattern(entry, NON_PROFESSIONAL_PATTERNS)
+
+
+def _entry_before_first_non_professional_signal(entry):
+    matches = [
+        match.start()
+        for pattern in NON_PROFESSIONAL_PATTERNS
+        for match in re.finditer(pattern, entry, flags=re.IGNORECASE)
+    ]
+
+    if not matches:
+        return entry
+
+    return entry[:min(matches)].strip()
+
+
+def _is_professional_entry(entry):
+    if not entry:
+        return False
+
+    if _is_non_professional_entry(entry):
+        professional_prefix = _entry_before_first_non_professional_signal(entry)
+        if not professional_prefix:
+            return False
+        entry = professional_prefix
+
+    has_role = _has_any_pattern(entry, PROFESSIONAL_ROLE_PATTERNS)
+    has_employment_type = _has_any_pattern(entry, EMPLOYMENT_TYPE_PATTERNS)
+    has_dates = bool(DATE_RANGE_PATTERN.search(entry) or DURATION_PATTERN.search(entry))
+    has_company_signal = bool(COMPANY_SIGNAL_PATTERN.search(entry))
+    has_work_signal = bool(
+        re.search(
+            r"\b(?:roles?\s+and\s+responsibilit(?:y|ies)|worked\s+on|"
+            r"working\s+on|service\s+request|incident\s+management|client\s*:)\b",
+            entry,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    if has_employment_type and (has_role or has_dates or has_company_signal):
+        return True
+
+    if has_role and has_dates:
+        return True
+
+    if has_role and has_company_signal:
+        return True
+
+    if has_dates and has_work_signal:
+        return True
+
+    return False
+
+
+def _has_explicit_zero_experience(text):
+    return bool(
+        re.search(
+            r"\b(?:fresher|no\s+(?:work\s+|professional\s+)?experience|"
+            r"0\s*(?:years?|yrs?)\s+(?:of\s+)?experience)\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def is_fresher(text):
+    """Return True when the resume has no deterministic professional job signal."""
+
+    normalized_text = _normalize_resume_text(text)
+
+    experience_sections = _extract_experience_sections(normalized_text)
+
+    if experience_sections:
+        return not any(
+            _is_professional_entry(entry)
+            for section in experience_sections
+            for entry in _split_experience_entries(section)
+        )
+
+    compact_entries = _split_experience_entries(normalized_text)
+    return not any(
+        _is_professional_entry(entry)
+        and (
+            _has_any_pattern(entry, EMPLOYMENT_TYPE_PATTERNS)
+            or COMPANY_SIGNAL_PATTERN.search(entry)
+        )
+        for entry in compact_entries
+    )

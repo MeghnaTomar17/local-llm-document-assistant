@@ -44,6 +44,7 @@ uploads/
 backend/uploads/
 test_resumes/
 training_data/test-10/
+training_data/test-30/
 
 # Generated metadata
 metadata.txt
@@ -70,6 +71,8 @@ test.py
 check_extraction.py
 debug_name_failures.py
 test_city.py
+fresher_audit.csv
+
 
 # Python
 venv/

@@ -8,6 +8,7 @@ import re
 from backend.services.llm_metadata_extractor import (
     extract_metadata_with_ollama,
     extract_enrichment_with_ollama,
+    is_fresher,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,6 @@ METADATA_FIELDS = [
     "Phone Number",
     "Cities",
     "Skills",
-    "Years Of Experience",
     "Fresher",
 ]
 
@@ -82,10 +82,12 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
         model=llm_model,
     )
 
-    deterministic_experience = extract_years_of_experience(text)
+    fresher = "Yes" if is_fresher(text) else "No"
+    
+    has_experience = has_professional_experience(text)
 
-    print("\nDETERMINISTIC EXPERIENCE:")
-    print(deterministic_experience)
+    print("\nHAS EXPERIENCE:")
+    print(has_experience)
 
     print("\nLLM METADATA:")
     print(llm_metadata)
@@ -152,15 +154,7 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
         "Skills": (
             llm_enrichment.get("skills", [])
         ),
-
-        "Years Of Experience": deterministic_experience,
-        
-
-        "Fresher": (
-            "Yes"
-            if deterministic_experience == 0
-            else "No"
-        ),
+        "Fresher": fresher,
     }
 
 def deterministic_metadata_fallback(file_name, text):
@@ -487,45 +481,53 @@ def title_case_name(value):
         return value.title()
     return value
 
-def extract_years_of_experience(text):
+from datetime import datetime
+import re
 
-    text_lower = text.lower()
+MONTHS = {
+    "jan":1,
+    "feb":2,
+    "mar":3,
+    "apr":4,
+    "may":5,
+    "jun":6,
+    "jul":7,
+    "aug":8,
+    "sep":9,
+    "oct":10,
+    "nov":11,
+    "dec":12,
+}
 
-    patterns = [
-        r'(\d+(?:\.\d+)?)\+?\s+years?\s+of\s+experience',
-        r'over\s+(\d+(?:\.\d+)?)\s+years?',
-        r'(\d+(?:\.\d+)?)\+?\s+yrs?\s+of\s+experience',
+
+
+def has_professional_experience(text):
+
+    text_lower = str(text).lower()
+
+    professional_keywords = [
+        "professional experience",
+        "work experience",
+        "employment history",
+        "career history",
+        "work history",
+        "employment",
     ]
 
-    for pattern in patterns:
-        match = re.search(pattern, text_lower)
+    internship_keywords = [
+        "internship",
+        "intern",
+        "industrial training",
+        "summer training",
+        "training"
+    ]
 
-        if match:
-            return float(match.group(1))
+    for keyword in professional_keywords:
+        if keyword in text_lower:
+            return True
 
-    current_year = datetime.now().year
+    for keyword in internship_keywords:
+        if keyword in text_lower:
+            return False
 
-    year_ranges = re.findall(
-        r"(20\d{2})\s*[-–]\s*(present|20\d{2})",
-        text_lower,
-        flags=re.IGNORECASE,
-    )
-
-    total_years = 0
-
-    for start_year, end_year in year_ranges:
-
-        start_year = int(start_year)
-
-        if str(end_year).lower() == "present":
-            end_year = current_year
-        else:
-            end_year = int(end_year)
-
-        if end_year >= start_year:
-            total_years += end_year - start_year
-
-    if total_years > 0:
-        return round(total_years, 1)
-
-    return 0
+    return False
