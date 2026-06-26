@@ -1,8 +1,11 @@
-# Resume Intelligence Assistant
+````markdown
+# Resume Intelligence Platform
 
-A local AI-powered Resume Intelligence Assistant built using **Ollama**, **Llama 3.2**, **FastAPI**, **React**, **Sentence Transformers**, and **FAISS**.
+> A fully local, AI-powered Resume Intelligence Platform built using **FastAPI**, **React**, **PostgreSQL**, **Ollama**, **Llama 3.2**, **FAISS**, and **Sentence Transformers**.
 
-The system supports advanced resume processing, metadata extraction, semantic retrieval, resume-aware chunking, session management, benchmarking, and local LLM-powered question answering without relying on external APIs.
+The Resume Intelligence Platform is designed to automate resume processing, metadata extraction, persistent storage, recruiter management, and semantic retrieval while ensuring complete data privacy through locally hosted Large Language Models (LLMs).
+
+Unlike cloud-based resume parsing solutions, all document processing, metadata extraction, and inference are performed locally using Ollama, ensuring that sensitive candidate information never leaves the local system.
 
 ---
 
@@ -10,75 +13,138 @@ The system supports advanced resume processing, metadata extraction, semantic re
 
 ## Resume Upload & Processing
 
-* Upload PDF and DOCX resumes.
-* Support for ATS-friendly resumes, Canva resumes, designer resumes, and multi-column layouts.
-* Layered PDF extraction pipeline:
-
-  * PyMuPDF block extraction
-  * pdfplumber extraction
-  * pypdf extraction
-  * OCR fallback (EasyOCR)
-* Automatic extraction quality assessment.
-* Resume-aware chunking based on logical sections.
-
----
-
-## Resume Metadata Extraction
-
-Hybrid metadata extraction pipeline combining:
-
-1. LLM-first extraction using Ollama.
-2. Metadata validation layer.
-3. Deterministic fallback extraction.
-
-### Extracted Fields
-
-* Candidate Name
-* Email Address
-* Phone Number
-* Alternate Phone Numbers
-
-### Metadata Validation
-
-#### Candidate Name Validation
-
-* Section heading rejection.
-* Email username contamination prevention.
-* Initial and multi-word name support.
-* Uppercase name normalization.
-* Invalid pattern filtering.
-
-#### Email Validation
-
-* Pattern validation.
-* Malformed email rejection.
-* Automatic fallback support.
-
-#### Phone Validation
-
-* Country code handling.
-* Date and year filtering.
-* Invalid number rejection.
-* Alternate phone support.
-* Normalized benchmark comparison.
+- Upload PDF and DOCX resumes.
+- Support for ATS-friendly resumes, Canva resumes, designer resumes, and multi-column layouts.
+- Multi-stage document extraction pipeline:
+  - PyMuPDF
+  - pdfplumber
+  - pypdf
+  - EasyOCR (fallback)
+- Automatic extraction quality assessment.
+- Resume-aware section detection.
+- Resume-aware chunking.
+- Duplicate resume detection using SHA256 hashing.
 
 ---
 
-## Resume-Aware Chunking
+## AI Metadata Extraction
 
-Resumes are split into logical sections:
+The platform combines Local LLM reasoning with deterministic validation to generate accurate candidate metadata.
 
-* Contact Information
-* Summary
-* Education
-* Skills
-* Experience
-* Projects
-* Certifications
-* Achievements
-* Languages
+### Extracted Metadata
 
-Each chunk stores metadata including:
+- Candidate Name
+- Email Address
+- Phone Number
+- Technical Skills
+- Cities / Locations
+- Fresher Status
+
+### Validation Pipeline
+
+Candidate metadata passes through multiple validation layers before storage.
+
+#### Candidate Name
+
+- Section heading rejection
+- Organization filtering
+- Email username contamination prevention
+- Uppercase normalization
+- Initial handling
+- Multi-word name support
+
+#### Email
+
+- Pattern validation
+- Invalid email rejection
+- Automatic fallback
+
+#### Phone Number
+
+- Country code support
+- Leading zero preservation
+- Invalid number filtering
+- Date/year rejection
+- International number handling
+
+---
+
+# Resume Persistence
+
+Unlike earlier prototype versions, metadata is now stored permanently in PostgreSQL.
+
+Each uploaded resume generates a persistent database record containing:
+
+- UUID
+- SHA256 Resume Hash
+- Original Filename
+- Stored Filename
+- File Path
+- MIME Type
+- Resume Binary (BYTEA)
+- Candidate Metadata
+- Recruiter Notes
+- Processing Status
+- Extraction Status
+- Verification Status
+- Upload Timestamp
+- Last Updated Timestamp
+
+Uploaded resumes are stored:
+
+- On Disk
+- Inside PostgreSQL (BYTEA)
+
+PostgreSQL serves as the application's **single source of truth**.
+
+---
+
+# Recruiter Management
+
+The platform includes recruiter-oriented CRUD functionality.
+
+Supported operations include:
+
+- View all resumes
+- View individual resume
+- Edit extracted metadata
+- Download uploaded resume
+- Delete candidate record
+
+Recruiters can modify:
+
+- Candidate Name
+- Email
+- Phone Number
+- Skills
+- Cities
+- Fresher Status
+- Notes
+
+After recruiter verification:
+
+- `is_verified = true`
+- `updated_at` is automatically updated.
+
+---
+
+# Resume-Aware Chunking
+
+Instead of fixed-size text chunks, resumes are divided into logical sections.
+
+Supported sections include:
+
+- Contact Information
+- Professional Summary
+- Education
+- Skills
+- Experience
+- Projects
+- Certifications
+- Achievements
+- Languages
+
+Each chunk stores metadata such as:
 
 ```text
 chunk_id
@@ -86,275 +152,276 @@ section
 title
 page
 content
-```
+````
+
+This significantly improves retrieval precision.
 
 ---
 
-## Semantic Retrieval
+# Semantic Retrieval
 
-Uses:
+The retrieval pipeline uses:
 
-* Sentence Transformers (`all-MiniLM-L6-v2`)
+* Sentence Transformers
+* all-MiniLM-L6-v2
 * FAISS Vector Search
 
-Retrieval behavior is dynamic:
+Retrieval adapts dynamically based on query type.
 
-### Project Questions
+### Project Queries
 
 Retrieves only project-related chunks.
 
-### Section Questions
+### Skills Queries
 
-Retrieves targeted chunks from:
+Retrieves Skills section.
 
-* Skills
-* Education
-* Experience
-* Certifications
-* Achievements
-* Languages
+### Education Queries
 
-### Resume Overview Questions
+Retrieves Education section.
 
-Retrieves multiple sections for broader context.
+### Experience Queries
+
+Retrieves Experience section.
 
 ### General Questions
 
-Falls back to semantic similarity retrieval.
+Uses semantic similarity search.
 
 ---
 
-## Session Management
+# Local LLM Question Answering
 
-Each uploaded resume operates in an isolated runtime session.
-
-### Session Isolation
-
-Every session maintains:
-
-* Chat history
-* Metadata
-* Resume chunks
-* FAISS index
-* Retrieval context
-
-This prevents cross-resume information leakage.
-
-### Session Switching
-
-Users can:
-
-* View all uploaded resume sessions.
-* Switch between sessions.
-* Continue conversations independently.
-
----
-
-## Metadata Storage
-
-After each upload:
-
-* metadata.txt is regenerated.
-* metadata.csv is regenerated.
-
-Files contain validated metadata records for all resumes uploaded during the current runtime session.
-
----
-
-## Local LLM Question Answering
-
-Powered by:
+Powered entirely by:
 
 * Ollama
-* Llama 3.2
+* Llama 3.2 (3B)
 
-Prompting strategy ensures:
+The assistant:
 
-* Answers use only resume information.
-* No hallucinated details.
-* No project mixing.
-* Missing information is explicitly acknowledged.
+* Answers only using uploaded resume content.
+* Avoids hallucinated information.
+* Maintains session isolation.
+* Supports follow-up questions.
 
 ---
 
-# Metadata Benchmarking Framework
-
-A dedicated benchmarking system evaluates extraction accuracy against manually verified ground-truth datasets.
-
-## Benchmark Metrics
-
-* Candidate Name Accuracy
-* Email Accuracy
-* Phone Number Accuracy
-* Overall Metadata Accuracy
-* Average Inference Time
-* Failure Analysis
-
-## Run Benchmark
-
-```bash
-python benchmark_llm_metadata.py training_data/resumes --model llama
-```
-
-Example Output:
+# Architecture
 
 ```text
-candidate_name: 92.00%
-email: 100.00%
-phone_number: 100.00%
-
-OVERALL: 97.00%
+                 React Frontend
+                        │
+                        ▼
+                 FastAPI Routes
+                        │
+                        ▼
+                 Service Layer
+                        │
+                        ▼
+                   CRUD Layer
+                        │
+                        ▼
+                 SQLAlchemy ORM
+                        │
+                        ▼
+                  PostgreSQL
+                        │
+                        ▼
+            Resume Persistence Layer
+                        │
+                        ▼
+             Ollama (Llama 3.2)
+                        │
+                        ▼
+            Metadata Extraction Pipeline
 ```
 
 ---
 
-# Extraction Quality Analysis
-
-Every uploaded resume generates extraction diagnostics.
-
-### Quality Signals
-
-* Character Count
-* Readable Word Ratio
-* Email Detection
-* Phone Detection
-* Resume Section Detection
-* Scrambled Text Score
-* Poor Extraction Detection
-
-This information is used to determine whether OCR fallback is required.
-
----
-
-# Debug Mode
-
-Developer debug mode can be enabled from the UI.
-
-### Debug Information
-
-* Extracted text
-* Resume chunks
-* Chunk metadata
-* Similarity scores
-* Retrieved chunks
-* Final retrieval context
-* Extraction method
-* Extraction quality diagnostics
-
-Enable extraction debugging:
-
-```powershell
-$env:PDF_EXTRACTION_DEBUG="1"
-```
-
-This prints:
-
-* PyMuPDF block coordinates
-* Layout analysis
-* Single-column detection
-* Multi-column detection
-
----
-
-# Supported Metadata Models
-
-Configure metadata extraction model:
-
-```powershell
-$env:OLLAMA_METADATA_MODEL="llama3.2:3b"
-```
-
-Supported aliases:
+# Resume Processing Workflow
 
 ```text
-llama
-llama3.2
-llama3.2:3b
-qwen
-mistral
-gemma
+Resume Upload
+      │
+      ▼
+Store Resume
+      │
+      ▼
+Extract Text
+      │
+      ▼
+Local LLM Metadata Extraction
+      │
+      ▼
+Metadata Validation
+      │
+      ▼
+Generate SHA256
+      │
+      ▼
+Duplicate Detection
+      │
+      ▼
+Store Resume in PostgreSQL
+      │
+      ▼
+Store Resume as BYTEA
+      │
+      ▼
+Generate metadata.csv
+      │
+      ▼
+Return Resume UUID
 ```
-
-Custom Ollama model tags are also supported.
 
 ---
 
-# Timeout Configuration
+# Technology Stack
 
-Configure metadata extraction timeout:
+## Frontend
 
-```powershell
-$env:OLLAMA_METADATA_TIMEOUT_SECONDS="300"
-```
+* React
+* Vite
+* Axios
 
-The system automatically falls back to deterministic extraction if the LLM times out.
+## Backend
+
+* FastAPI
+* Python 3.13
+
+## Database
+
+* PostgreSQL
+* SQLAlchemy 2.0
+* Pydantic v2
+
+## Local AI
+
+* Ollama
+* Llama 3.2 (3B)
+
+## Retrieval
+
+* Sentence Transformers
+* all-MiniLM-L6-v2
+* FAISS
+
+## Document Processing
+
+* PyMuPDF
+* pdfplumber
+* pypdf
+* EasyOCR
 
 ---
 
-# API Endpoints
+# Project Structure
 
-## Resume Management
+```text
+backend/
+│
+├── api/
+├── models/
+├── rag/
+├── routes/
+├── schemas/
+├── services/
+├── uploads/
 
-```http
-POST /upload
-GET /sessions
-POST /switch-session
-```
+database/
+│
+├── migrations/
+├── connection.py
+├── crud.py
+├── models.py
+├── init_db.py
 
-## Chat
+frontend/
+│
+├── src/
+├── package.json
 
-```http
-POST /ask
-GET /chat-history
-POST /clear-chat
-```
-
-## Metadata
-
-```http
-GET /metadata
-```
-
-## Diagnostics
-
-```http
-GET /stats
-GET /debug
+.env
+requirements.txt
+README.md
 ```
 
 ---
 
 # Installation
 
-Create virtual environment:
+Clone the repository.
+
+```bash
+git clone <repository-url>
+```
+
+Create virtual environment.
 
 ```bash
 python -m venv venv
 ```
 
-Activate:
+Activate environment.
+
+Windows PowerShell
 
 ```powershell
 .\venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+Install backend dependencies.
 
 ```bash
 pip install -r requirements.txt
+```
+
+Install frontend dependencies.
+
+```bash
+cd frontend
+npm install
+```
+
+---
+
+# PostgreSQL Setup
+
+Create a PostgreSQL database.
+
+```sql
+CREATE DATABASE resume_platform;
+```
+
+Configure the `.env` file.
+
+```env
+DATABASE_URL=postgresql://postgres:<password>@localhost:5432/resume_platform
+```
+
+Initialize the database.
+
+```bash
+python database/init_db.py
 ```
 
 ---
 
 # Ollama Setup
 
-Install and pull model:
+Verify installation.
+
+```bash
+ollama --version
+```
+
+Download the production model.
 
 ```bash
 ollama pull llama3.2:3b
 ```
 
-Start Ollama:
+Start Ollama.
 
 ```bash
 ollama serve
@@ -362,114 +429,148 @@ ollama serve
 
 ---
 
-# Backend
+# Running the Application
 
-Run FastAPI backend:
+Start backend.
 
 ```bash
 uvicorn backend.main:app --reload
 ```
 
-Backend URL:
+Backend:
 
 ```text
 http://localhost:8000
 ```
 
----
-
-# Frontend
+Start frontend.
 
 ```bash
 cd frontend
-npm install
 npm run dev
 ```
 
-Frontend URL:
+Frontend:
 
 ```text
 http://localhost:5173
 ```
 
----
+Swagger:
 
-# Streamlit Version
-
-```bash
-streamlit run app.py
+```text
+http://localhost:8000/docs
 ```
 
 ---
 
-# Tech Stack
+# API Endpoints
 
-### Backend
+## Resume Management
 
-* FastAPI
-* Python
-
-### Frontend
-
-* React
-* Vite
-
-### LLM
-
-* Ollama
-* Llama 3.2
-
-### Retrieval
-
-* Sentence Transformers
-* FAISS
-
-### Document Processing
-
-* PyMuPDF
-* pdfplumber
-* pypdf
-* EasyOCR
-
-### Data Handling
-
-* CSV
-* Runtime Metadata Store
+| Method | Endpoint                 |
+| ------ | ------------------------ |
+| POST   | `/upload`                |
+| GET    | `/resumes`               |
+| GET    | `/resumes/{id}`          |
+| PUT    | `/resumes/{id}`          |
+| DELETE | `/resumes/{id}`          |
+| GET    | `/resumes/{id}/download` |
 
 ---
 
-# Current Limitations
+# Local LLM Benchmark
 
-* Runtime sessions are stored in memory.
-* Metadata is not persisted across backend restarts.
-* Resumes must be re-uploaded after restart.
-* FAISS indices are session-local and recreated after restart.
-* DOC files are not supported.
-* OCR processing may increase extraction time for image-heavy resumes.
+The following Local LLMs were evaluated for metadata extraction.
+
+| Model              | Overall Accuracy | Avg Inference Time |
+| ------------------ | ---------------: | -----------------: |
+| **Llama 3.2 (3B)** |       **96.55%** |        **35.54 s** |
+| Mistral            |           96.55% |           108.04 s |
+| Gemma 2B           |           93.10% |            32.56 s |
+| Qwen 2.5 (3B)      |           89.66% |            35.29 s |
+
+### Full Benchmark
+
+| Metric                  | Result     |
+| ----------------------- | ---------- |
+| Candidate Name Accuracy | 91.74%     |
+| Email Accuracy          | 96.19%     |
+| Phone Accuracy          | 94.23%     |
+| Overall Accuracy        | **94.03%** |
+
+Llama 3.2 (3B) was selected as the production model due to its balance between metadata extraction accuracy, inference speed, hardware requirements, and seamless Ollama integration.
 
 ---
 
-# Future Enhancements
+# Current Capabilities
 
-* City / Location Extraction
-* Consolidated Metadata Storage
-* Persistent Session Storage
-* Multi-Candidate Resume Handling
-* Enhanced Metadata Dashboard
-* Advanced Resume Analytics
-* Recruiter-Oriented Search & Filtering
+* PDF Resume Processing
+* DOCX Resume Processing
+* Local LLM Metadata Extraction
+* Resume-Aware Chunking
+* Semantic Retrieval
+* Recruiter CRUD Operations
+* PostgreSQL Persistence
+* Resume Download
+* Duplicate Detection
+* SHA256 Hashing
+* Metadata Validation
+* Resume Benchmarking
+* React Recruiter Dashboard
+* FastAPI REST APIs
 
 ---
 
-# Project Goal
+# Future Roadmap
 
-Build a fully local, privacy-preserving Resume Intelligence Assistant capable of:
+The next development phase will introduce recruiter-oriented natural language candidate search.
 
-* Resume understanding
-* Metadata extraction
-* Semantic search
-* Context-aware question answering
-* Retrieval diagnostics
-* Resume benchmarking
+Planned architecture:
 
-without relying on external cloud LLM APIs.
+```text
+Recruiter Query
+        │
+        ▼
+Local LLM
+        │
+Generate SQL
+        │
+        ▼
+PostgreSQL
+        │
+Matching Candidates
+        │
+        ▼
+LLM Summary
+```
+
+Upcoming enhancements include:
+
+* Natural Language SQL Search
+* Semantic Candidate Search
+* Advanced Recruiter Filters
+* Candidate Ranking
+* Job Description Matching
+* Experience Extraction
+* Recruiter Authentication
+* Dashboard Analytics
+* Cloud Deployment
+* Audit History
+
+---
+
+# License
+
+This project was developed as part of an internship project for educational and research purposes.
+
+---
+
+# Author
+
+**Meghna Tomar**
+
+AI | Machine Learning | NLP | FastAPI | React | PostgreSQL | Local LLMs
+
+```
+```
