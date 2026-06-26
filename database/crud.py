@@ -111,6 +111,29 @@ def get_resume_by_id(resume_id):
 
         session.close()
 
+
+def get_resume_download_by_id(resume_id):
+
+    session = SessionLocal()
+
+    try:
+
+        statement = select(
+            Resume.original_file_name,
+            Resume.mime_type,
+            Resume.resume_blob,
+        ).where(
+            Resume.id == resume_id
+        )
+
+        return session.execute(
+            statement
+        ).one_or_none()
+
+    finally:
+
+        session.close()
+
 def list_resumes():
 
     session = SessionLocal()

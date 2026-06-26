@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from backend.schemas.resume import ResumeListResponse, ResumeResponse, ResumeUpdate
 from database.crud import (
     delete_resume,
+    get_resume_download_by_id,
     get_resume_by_id,
     list_resumes,
     save_resume,
@@ -43,6 +44,7 @@ def build_resume_payload(file_path: Path, original_file_name: str, metadata: dic
         "stored_file_name": file_path.name,
         "file_path": str(file_path),
         "mime_type": mime_type or "application/octet-stream",
+        "resume_blob": file_bytes,
         "candidate_name": metadata.get("Candidate Name") or None,
         "email": metadata.get("Email") or None,
         "phone_number": metadata.get("Phone Number") or None,
@@ -69,6 +71,10 @@ def get_resume_response(resume_id: UUID) -> Resume | None:
     return get_resume_by_id(resume_id)
 
 
+def get_resume_download(resume_id: UUID):
+    return get_resume_download_by_id(resume_id)
+
+
 def update_resume_response(resume_id: UUID, payload: ResumeUpdate) -> Resume | None:
     data = payload.model_dump(exclude_unset=True)
     return update_resume_metadata(resume_id, data)
@@ -85,6 +91,7 @@ __all__ = [
     "SQLAlchemyError",
     "delete_resume_response",
     "get_resume_response",
+    "get_resume_download",
     "list_resume_response",
     "persist_resume_metadata",
     "update_resume_response",

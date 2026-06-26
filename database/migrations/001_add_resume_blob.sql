@@ -1,0 +1,2 @@
+ALTER TABLE resumes
+ADD COLUMN IF NOT EXISTS resume_blob BYTEA;

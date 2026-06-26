@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import (
     Boolean,
     DateTime,
+    LargeBinary,
     String,
     Text,
     func,
@@ -62,6 +63,12 @@ class Resume(Base):
     mime_type: Mapped[str] = mapped_column(
         Text,
         nullable=False,
+    )
+
+    resume_blob: Mapped[bytes | None] = mapped_column(
+        LargeBinary,
+        nullable=True,
+        deferred=True,
     )
 
     # -------------------------

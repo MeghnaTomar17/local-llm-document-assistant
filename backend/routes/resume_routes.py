@@ -1,12 +1,16 @@
 from uuid import UUID
+from io import BytesIO
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
 
 from backend.schemas.resume import ResumeListResponse, ResumeResponse, ResumeUpdate
 from backend.services.resume_service import (
     IntegrityError,
     SQLAlchemyError,
     delete_resume_response,
+    get_resume_download,
     get_resume_response,
     list_resume_response,
     update_resume_response,
@@ -25,6 +29,44 @@ def get_resumes() -> ResumeListResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch resumes.",
         ) from exc
+
+
+@router.get("/{resume_id}/download")
+def download_resume(resume_id: UUID) -> StreamingResponse:
+    try:
+        download = get_resume_download(resume_id)
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to download resume.",
+        ) from exc
+
+    if not download:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found.",
+        )
+
+    original_file_name, mime_type, resume_blob = download
+
+    if not resume_blob:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume file content was not found in the database.",
+        )
+
+    safe_file_name = quote(original_file_name or "resume", safe="")
+    headers = {
+        "Content-Disposition": (
+            f"attachment; filename*=UTF-8''{safe_file_name}"
+        )
+    }
+
+    return StreamingResponse(
+        BytesIO(resume_blob),
+        media_type=mime_type or "application/octet-stream",
+        headers=headers,
+    )
 
 
 @router.get("/{resume_id}", response_model=ResumeResponse)
