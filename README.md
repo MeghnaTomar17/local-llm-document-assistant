@@ -1,37 +1,56 @@
-````markdown
 # Resume Intelligence Platform
 
 > A fully local, AI-powered Resume Intelligence Platform built using **FastAPI**, **React**, **PostgreSQL**, **Ollama**, **Llama 3.2**, **FAISS**, and **Sentence Transformers**.
 
-The Resume Intelligence Platform is designed to automate resume processing, metadata extraction, persistent storage, recruiter management, and semantic retrieval while ensuring complete data privacy through locally hosted Large Language Models (LLMs).
+The **Resume Intelligence Platform** is an AI-powered application designed to automate resume processing, intelligent metadata extraction, persistent storage, recruiter management, and semantic retrieval while ensuring complete data privacy through locally hosted Large Language Models (LLMs).
 
-Unlike cloud-based resume parsing solutions, all document processing, metadata extraction, and inference are performed locally using Ollama, ensuring that sensitive candidate information never leaves the local system.
+Unlike traditional cloud-based resume parsing systems, every stage of processing—including document extraction, metadata generation, semantic retrieval, and question answering—is performed locally using Ollama. This ensures that sensitive candidate information never leaves the organization's infrastructure.
+
+The platform combines deterministic validation techniques with Local LLM reasoning to produce accurate and reliable candidate metadata, while PostgreSQL provides persistent storage for both extracted information and uploaded resume files.
 
 ---
 
 # Features
 
-## Resume Upload & Processing
+##  Resume Upload & Processing
 
-- Upload PDF and DOCX resumes.
-- Support for ATS-friendly resumes, Canva resumes, designer resumes, and multi-column layouts.
-- Multi-stage document extraction pipeline:
-  - PyMuPDF
-  - pdfplumber
-  - pypdf
-  - EasyOCR (fallback)
-- Automatic extraction quality assessment.
-- Resume-aware section detection.
-- Resume-aware chunking.
-- Duplicate resume detection using SHA256 hashing.
+The platform supports intelligent processing of multiple resume formats and layouts.
+
+### Supported File Formats
+
+- PDF (`.pdf`)
+- Microsoft Word (`.docx`)
+
+### Supported Resume Types
+
+- ATS-friendly resumes
+- Canva resumes
+- Designer resumes
+- Multi-column resumes
+- Academic resumes
+- Professional resumes
+
+### Document Processing Pipeline
+
+Each uploaded resume passes through a multi-stage extraction pipeline consisting of:
+
+- PyMuPDF block extraction
+- pdfplumber extraction
+- pypdf extraction
+- EasyOCR fallback for scanned documents
+- Extraction quality assessment
+- Resume-aware section detection
+- Resume-aware chunking
+
+To prevent duplicate records, every uploaded document is assigned a unique **SHA256 hash**, which is used for duplicate detection before storing the resume.
 
 ---
 
-## AI Metadata Extraction
+# AI Metadata Extraction
 
-The platform combines Local LLM reasoning with deterministic validation to generate accurate candidate metadata.
+The Resume Intelligence Platform combines **Local LLM reasoning** with **deterministic validation** to generate structured candidate metadata.
 
-### Extracted Metadata
+The current implementation extracts the following information from every uploaded resume:
 
 - Candidate Name
 - Email Address
@@ -40,11 +59,13 @@ The platform combines Local LLM reasoning with deterministic validation to gener
 - Cities / Locations
 - Fresher Status
 
-### Validation Pipeline
+The extracted information is validated before being stored permanently in PostgreSQL.
 
-Candidate metadata passes through multiple validation layers before storage.
+## Metadata Validation Pipeline
 
-#### Candidate Name
+To improve extraction accuracy, every metadata field passes through dedicated validation rules.
+
+### Candidate Name Validation
 
 - Section heading rejection
 - Organization filtering
@@ -53,25 +74,27 @@ Candidate metadata passes through multiple validation layers before storage.
 - Initial handling
 - Multi-word name support
 
-#### Email
+### Email Validation
 
 - Pattern validation
 - Invalid email rejection
-- Automatic fallback
+- Automatic fallback extraction
 
-#### Phone Number
+### Phone Number Validation
 
-- Country code support
+- Country code handling
 - Leading zero preservation
 - Invalid number filtering
-- Date/year rejection
-- International number handling
+- Date and year rejection
+- International number support
+
+This hybrid extraction approach combines the flexibility of Large Language Models with the reliability of deterministic validation.
 
 ---
 
 # Resume Persistence
 
-Unlike earlier prototype versions, metadata is now stored permanently in PostgreSQL.
+Unlike earlier prototype versions, the Resume Intelligence Platform now stores all candidate information permanently in PostgreSQL.
 
 Each uploaded resume generates a persistent database record containing:
 
@@ -90,47 +113,44 @@ Each uploaded resume generates a persistent database record containing:
 - Upload Timestamp
 - Last Updated Timestamp
 
-Uploaded resumes are stored:
+Uploaded resumes are stored in two locations:
 
-- On Disk
-- Inside PostgreSQL (BYTEA)
+- Local Disk
+- PostgreSQL (BYTEA)
 
-PostgreSQL serves as the application's **single source of truth**.
+PostgreSQL serves as the **single source of truth**, while generated metadata files are retained only for debugging and development purposes.
 
 ---
 
 # Recruiter Management
 
-The platform includes recruiter-oriented CRUD functionality.
+The platform provides recruiter-oriented resume management capabilities through a REST-based API.
 
 Supported operations include:
 
 - View all resumes
-- View individual resume
+- View individual resume details
 - Edit extracted metadata
-- Download uploaded resume
-- Delete candidate record
+- Download stored resumes
+- Delete candidate records
 
-Recruiters can modify:
+Recruiters can update the following fields:
 
 - Candidate Name
-- Email
+- Email Address
 - Phone Number
-- Skills
+- Technical Skills
 - Cities
 - Fresher Status
-- Notes
+- Recruiter Notes
 
-After recruiter verification:
-
-- `is_verified = true`
-- `updated_at` is automatically updated.
+Once recruiter verification is complete, the system automatically marks the candidate record as verified and updates the modification timestamp.
 
 ---
 
 # Resume-Aware Chunking
 
-Instead of fixed-size text chunks, resumes are divided into logical sections.
+Instead of splitting resumes into fixed-size text chunks, the Resume Intelligence Platform implements **resume-aware chunking**, where resumes are divided into meaningful logical sections.
 
 Supported sections include:
 
@@ -144,7 +164,7 @@ Supported sections include:
 - Achievements
 - Languages
 
-Each chunk stores metadata such as:
+Each generated chunk stores the following metadata:
 
 ```text
 chunk_id
@@ -152,11 +172,9 @@ section
 title
 page
 content
-````
+```
 
-This significantly improves retrieval precision.
-
----
+This structured representation enables the retrieval engine to identify only the most relevant portions of a resume, improving semantic retrieval accuracy while minimizing unnecessary context provided to the Local LLM.
 
 # Semantic Retrieval
 
