@@ -482,6 +482,76 @@ http://localhost:8000/docs
 
 ---
 
+---
+
+# Bulk Resume Processing
+
+The project includes a command-line utility for processing large collections of resumes without using the React frontend or FastAPI Swagger interface.
+
+This utility is intended for recruiter evaluation, large-scale testing, and benchmarking scenarios involving hundreds or thousands of resumes.
+
+## Features
+
+- Process an entire folder of resumes recursively.
+- Supports both **PDF** and **DOCX** formats.
+- Automatically extracts metadata using the existing Resume Intelligence pipeline.
+- Stores processed resumes in PostgreSQL.
+- Preserves duplicate detection through SHA256 hashing.
+- Displays processing progress using a terminal progress bar.
+- Generates detailed processing logs.
+- Exports a CSV processing report summarizing the results.
+
+## Usage
+
+Run the utility from the project root.
+
+```bash
+python bulk_process.py "<folder_path>"
+```
+
+Example:
+
+```bash
+python bulk_process.py "D:\Resume_Dataset"
+```
+
+The script scans the specified directory recursively and processes every supported resume found.
+
+## Generated Outputs
+
+After execution, the following files are generated:
+
+| File | Description |
+|------|-------------|
+| `processing_report.csv` | Summary of processed resumes, processing time, status, and Resume UUID |
+| `bulk_processing.log` | Detailed processing logs and error information |
+
+## Typical Workflow
+
+```text
+Resume Folder
+        │
+        ▼
+Recursive File Discovery
+        │
+        ▼
+Resume Processing Pipeline
+        │
+        ▼
+Metadata Extraction
+        │
+        ▼
+Duplicate Detection
+        │
+        ▼
+PostgreSQL Storage
+        │
+        ▼
+CSV Report + Log File
+```
+
+The utility is designed for large-scale evaluation and can be used to process hundreds or thousands of resumes using the same extraction pipeline as the web application.
+
 # API Endpoints
 
 ## Resume Management
