@@ -1,0 +1,42 @@
+[
+  {
+    "id": "python_developers",
+    "question": "Find Python developers."
+  },
+  {
+    "id": "freshers",
+    "question": "Find freshers."
+  },
+  {
+    "id": "candidates_from_delhi",
+    "question": "Find candidates from Delhi."
+  },
+  {
+    "id": "postgresql_developers",
+    "question": "Find PostgreSQL developers."
+  },
+  {
+    "id": "react_and_sql",
+    "question": "Find candidates with React and SQL."
+  },
+  {
+    "id": "verified_resumes",
+    "question": "Find verified resumes."
+  },
+  {
+    "id": "count_freshers",
+    "question": "How many freshers are there?"
+  },
+  {
+    "id": "top_candidate_city",
+    "question": "Which city has the highest number of candidates?"
+  },
+  {
+    "id": "experienced_gis_python_postgresql",
+    "question": "Find experienced GIS developers with Python and PostgreSQL."
+  },
+  {
+    "id": "unverified_experienced",
+    "question": "Find experienced candidates whose metadata has not been verified."
+  }
+]
