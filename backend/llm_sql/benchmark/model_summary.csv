@@ -1,0 +1,5 @@
+model,total_queries,validation_pass_rate,execution_success_rate,average_generation_time_ms,average_execution_time_ms,average_total_time_ms
+llama3.2:3b,30,50.0,46.67,8269.529,5.262,8279.204
+qwen2.5-coder:7b,30,100.0,100.0,13679.745,4.748,13686.733
+gemma3:4b,30,100.0,100.0,12461.317,5.224,12469.089
+deepseek-r1:8b,30,70.0,70.0,46591.258,3.396,79143.564

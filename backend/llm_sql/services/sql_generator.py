@@ -33,16 +33,7 @@ class SQLGeneratorConfig:
     def from_env(cls) -> "SQLGeneratorConfig":
         """Build configuration from environment variables."""
 
-        model = (
-            os.getenv("OLLAMA_SQL_MODEL")
-            or os.getenv("OLLAMA_MODEL")
-            or os.getenv("OLLAMA_METADATA_MODEL")
-        )
-
-        if not model:
-            raise SQLGenerationError(
-                "Set OLLAMA_SQL_MODEL, OLLAMA_MODEL, or OLLAMA_METADATA_MODEL."
-            )
+        model = os.getenv("OLLAMA_SQL_MODEL", "qwen2.5-coder:7b")
 
         return cls(
             model=model,

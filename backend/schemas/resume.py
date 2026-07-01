@@ -1,13 +1,19 @@
 from datetime import datetime
 from uuid import UUID
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
+
+HRDecision = Literal["PENDING", "ACCEPTED", "REJECTED"]
 
 
 class ResumeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    session_id: UUID | None = None
     original_file_name: str
     stored_file_name: str | None = None
     file_path: str | None = None
@@ -22,6 +28,8 @@ class ResumeResponse(BaseModel):
     is_verified: bool
     extraction_status: str
     notes: str | None = None
+    hr_decision: HRDecision = "PENDING"
+    decision_at: datetime | None = None
     uploaded_at: datetime
     updated_at: datetime
 
@@ -36,12 +44,14 @@ class ResumeUpdate(BaseModel):
     cities: list[str] | None = None
     fresher: bool | None = None
     notes: str | None = None
+    hr_decision: HRDecision | None = None
 
 
 class ResumeListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    session_id: UUID | None = None
     original_file_name: str
     candidate_name: str | None = None
     email: str | None = None
@@ -53,6 +63,8 @@ class ResumeListItem(BaseModel):
     is_verified: bool
     extraction_status: str
     notes: str | None = None
+    hr_decision: HRDecision = "PENDING"
+    decision_at: datetime | None = None
     uploaded_at: datetime
     updated_at: datetime
 
@@ -60,3 +72,16 @@ class ResumeListItem(BaseModel):
 class ResumeListResponse(BaseModel):
     total: int
     resumes: list[ResumeListItem]
+
+
+class ResumeChunkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    resume_id: UUID
+    chunk_index: int
+    section: str | None = None
+    title: str | None = None
+    page_number: int | None = None
+    content: str
+    created_at: datetime

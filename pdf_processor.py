@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import uuid
 
@@ -24,9 +25,14 @@ MAX_MEMORY_MESSAGES = 3
 MIN_GOOD_EXTRACTION_CHARS = 350
 MIN_READABLE_WORD_RATIO = 0.55
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2:3b"
+OLLAMA_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.2:3b")
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 PDF_EXTRACTION_DEBUG = os.getenv("PDF_EXTRACTION_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def console_safe_text(value):
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    return str(value).encode(encoding, errors="replace").decode(encoding, errors="replace")
 
 RESUME_SECTIONS = {
     "Contact Information": {
@@ -1107,7 +1113,7 @@ def process_document(file_path, vector_store=None, reset_store=True, document_na
     print("\n" + "=" * 80)
     print("EXTRACTED TEXT")
     print("=" * 80)
-    print(text[:5000])   # first 5000 chars
+    print(console_safe_text(text[:5000]))   # first 5000 chars
     print("=" * 80)
     document_id = uuid.uuid4().hex
     display_name = document_name or path.name

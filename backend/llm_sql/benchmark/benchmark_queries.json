@@ -1,42 +1,122 @@
 [
   {
-    "id": "python_developers",
+    "id": "skill_python",
     "question": "Find Python developers."
+  },
+  {
+    "id": "skill_postgresql",
+    "question": "Find PostgreSQL developers."
+  },
+  {
+    "id": "skill_react",
+    "question": "Find React candidates."
+  },
+  {
+    "id": "skill_gis",
+    "question": "Find GIS analysts."
+  },
+  {
+    "id": "skill_qgis",
+    "question": "Find candidates with QGIS experience."
+  },
+  {
+    "id": "city_delhi",
+    "question": "Find candidates from Delhi."
+  },
+  {
+    "id": "city_chennai",
+    "question": "Find candidates from Chennai."
+  },
+  {
+    "id": "city_bengaluru",
+    "question": "Find candidates from Bengaluru."
+  },
+  {
+    "id": "skill_city_python_delhi",
+    "question": "Find Python developers in Delhi."
+  },
+  {
+    "id": "skill_city_gis_chennai",
+    "question": "Find GIS candidates from Chennai."
+  },
+  {
+    "id": "skill_city_react_bengaluru",
+    "question": "Find React developers in Bengaluru."
   },
   {
     "id": "freshers",
     "question": "Find freshers."
   },
   {
-    "id": "candidates_from_delhi",
-    "question": "Find candidates from Delhi."
+    "id": "experienced",
+    "question": "Find experienced candidates."
   },
   {
-    "id": "postgresql_developers",
-    "question": "Find PostgreSQL developers."
+    "id": "experienced_python",
+    "question": "Find experienced Python candidates."
   },
   {
-    "id": "react_and_sql",
+    "id": "freshers_sql",
+    "question": "Find fresher candidates with SQL skills."
+  },
+  {
+    "id": "verified",
+    "question": "Find verified resumes."
+  },
+  {
+    "id": "unverified",
+    "question": "Find resumes that are not verified."
+  },
+  {
+    "id": "verified_python",
+    "question": "Find verified Python candidates."
+  },
+  {
+    "id": "multiple_skills_python_postgresql",
+    "question": "Find candidates with Python and PostgreSQL."
+  },
+  {
+    "id": "multiple_skills_react_sql",
     "question": "Find candidates with React and SQL."
   },
   {
-    "id": "verified_resumes",
-    "question": "Find verified resumes."
+    "id": "multiple_skills_gis_python_postgresql",
+    "question": "Find experienced GIS developers with Python and PostgreSQL."
+  },
+  {
+    "id": "latest_uploads",
+    "question": "Show the latest uploaded resumes."
+  },
+  {
+    "id": "latest_verified",
+    "question": "Show latest verified candidates."
   },
   {
     "id": "count_freshers",
     "question": "How many freshers are there?"
   },
   {
+    "id": "count_experienced",
+    "question": "How many experienced candidates are there?"
+  },
+  {
+    "id": "count_verified",
+    "question": "How many resumes are verified?"
+  },
+  {
+    "id": "group_by_fresher",
+    "question": "Count candidates by fresher status."
+  },
+  {
+    "id": "group_by_verification",
+    "question": "Count resumes by verification status."
+  },
+  {
     "id": "top_candidate_city",
     "question": "Which city has the highest number of candidates?"
   },
   {
-    "id": "experienced_gis_python_postgresql",
-    "question": "Find experienced GIS developers with Python and PostgreSQL."
-  },
-  {
-    "id": "unverified_experienced",
-    "question": "Find experienced candidates whose metadata has not been verified."
+    "id": "mixed_recent_experienced_python_unverified",
+    "question": "Find latest experienced Python candidates whose metadata is not verified."
   }
 ]

@@ -10,10 +10,106 @@ Use ONLY the provided schema.
 Generate only SELECT statements.
 Do not generate INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, TRUNCATE, or other write statements.
 Do not generate multiple SQL statements.
+Never use SELECT *.
+Always use this structure for non-aggregate recruiter searches:
+SELECT recruiter_columns
+FROM resumes
+WHERE filters_requested_by_the_recruiter
+LIMIT 100;
+
+If the recruiter asks a broad search with no filters, omit WHERE but still use LIMIT 100.
+Never place boolean expressions in the SELECT clause.
+Never place filters such as skills::text ILIKE '%Python%' in the SELECT clause.
+All skill, city, fresher, verified, status, and date filters must appear in WHERE.
+Never invent filters. Do not add fresher, processing_status, is_verified, city, skill, or status conditions unless the recruiter explicitly asks for them.
+
+For non-aggregate recruiter searches, select only these recruiter-relevant columns:
+id,
+candidate_name,
+email,
+phone_number,
+skills,
+cities,
+fresher,
+is_verified,
+processing_status,
+extraction_status,
+uploaded_at,
+updated_at,
+notes.
+
+Do not select internal columns:
+resume_hash,
+stored_file_name,
+file_path,
+mime_type,
+resume_blob.
+
+Use LIMIT 100 by default for non-aggregate queries.
+Do not add LIMIT 100 to aggregate queries such as COUNT queries or GROUP BY queries.
 
 When filtering JSONB array columns such as skills or cities, use column::text ILIKE '%value%'.
 When the recruiter asks for experienced candidates, use fresher = false.
 When the recruiter asks for freshers, use fresher = true.
+
+Examples:
+
+Question: Find Python developers.
+SQL:
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+FROM resumes
+WHERE skills::text ILIKE '%Python%'
+LIMIT 100;
+
+Question: Find candidates from Delhi.
+SQL:
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+FROM resumes
+WHERE cities::text ILIKE '%Delhi%'
+LIMIT 100;
+
+Question: Find freshers.
+SQL:
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+FROM resumes
+WHERE fresher = true
+LIMIT 100;
+
+Question: Find experienced GIS candidates from Chennai.
+SQL:
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+FROM resumes
+WHERE fresher = false
+AND skills::text ILIKE '%GIS%'
+AND cities::text ILIKE '%Chennai%'
+LIMIT 100;
+
+Question: Find verified React candidates.
+SQL:
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+FROM resumes
+WHERE is_verified = true
+AND skills::text ILIKE '%React%'
+LIMIT 100;
+
+Question: Show the latest uploaded resumes.
+SQL:
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+FROM resumes
+ORDER BY uploaded_at DESC
+LIMIT 100;
+
+Question: How many freshers are there?
+SQL:
+SELECT COUNT(*) AS total
+FROM resumes
+WHERE fresher = true;
+
+Question: Count candidates by fresher status.
+SQL:
+SELECT fresher, COUNT(*) AS total
+FROM resumes
+GROUP BY fresher;
 
 Schema:
 {schema_context}

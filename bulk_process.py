@@ -44,6 +44,18 @@ def parse_arguments():
         help="Folder containing resumes",
     )
 
+    parser.add_argument(
+        "--session",
+        dest="session_id",
+        help="Existing persistent session UUID to attach processed resumes to when --group-session is used",
+    )
+
+    parser.add_argument(
+        "--group-session",
+        action="store_true",
+        help="Group all newly processed resumes into one RecruiterSession instead of the default one-session-per-resume workflow.",
+    )
+
     return parser.parse_args()
 
 
@@ -103,7 +115,7 @@ def append_report(name, status, resume_id="", elapsed="", error=""):
 # Resume Processing
 # ---------------------------------------------------------------------
 
-def process_resumes(resumes):
+def process_resumes(resumes, session_id=None, group_session=False):
 
     initialize_report()
 
@@ -113,8 +125,19 @@ def process_resumes(resumes):
     failed = 0
 
     overall_start = time.time()
+    if group_session and session_id:
+        active_session_id = session_id
+    elif group_session:
+        active_session_id = document_service.create_session(
+            title=f"Bulk Processing {datetime_label()}"
+        ).session_id
+    else:
+        active_session_id = None
 
     print("\nProcessing resumes...\n")
+    print(
+        f"Session: {active_session_id if active_session_id else 'one persistent session per unique resume'}\n"
+    )
 
     for resume in tqdm(
         resumes,
@@ -129,6 +152,7 @@ def process_resumes(resumes):
             session = document_service.add_document(
                 file_path=resume,
                 display_name=resume.name,
+                session_id=active_session_id if group_session else None,
             )
 
             document = session.document
@@ -191,6 +215,11 @@ def process_resumes(resumes):
 
     print(f"\nCSV Report : {REPORT_FILE}")
     print(f"Log File   : {LOG_FILE}")
+    print(f"Session    : {active_session_id if active_session_id else 'one per unique resume'}")
+
+
+def datetime_label():
+    return time.strftime("%Y-%m-%d %H:%M:%S")
 
 
 # ---------------------------------------------------------------------
@@ -232,7 +261,11 @@ def main():
 
         return
 
-    process_resumes(resumes)
+    process_resumes(
+        resumes,
+        session_id=args.session_id,
+        group_session=args.group_session,
+    )
 
 
 if __name__ == "__main__":

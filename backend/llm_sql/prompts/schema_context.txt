@@ -18,6 +18,8 @@ Columns:
 - extraction_status TEXT
 - is_verified BOOLEAN
 - notes TEXT
+- hr_decision TEXT
+- decision_at TIMESTAMP
 - uploaded_at TIMESTAMP
 - updated_at TIMESTAMP
 
@@ -27,4 +29,5 @@ Notes:
 - fresher = true means the candidate is a fresher.
 - fresher = false means the candidate has professional experience.
 - is_verified = true means a recruiter has verified or edited the metadata.
+- hr_decision is one of PENDING, ACCEPTED, or REJECTED.
 - Use only the resumes table.
