@@ -1,4 +1,4 @@
-# Manager Setup Guide
+# Setup Guide
 
 This guide is for setting up the project on a PC that may already have the older version of the database with only the initial `resumes` table.
 
