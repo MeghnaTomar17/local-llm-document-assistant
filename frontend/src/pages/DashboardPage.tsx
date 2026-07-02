@@ -11,6 +11,7 @@ export function DashboardPage() {
   const experienced = resumes.filter((resume) => resume.fresher === false).length;
   const verified = resumes.filter((resume) => resume.is_verified === true).length;
   const needsReview = resumes.filter((resume) => !resume.is_verified).length;
+  const onHold = resumes.filter((resume) => resume.hr_decision === "ON_HOLD").length;
   const accepted = resumes.filter((resume) => resume.hr_decision === "ACCEPTED").length;
   const rejected = resumes.filter((resume) => resume.hr_decision === "REJECTED").length;
   const recent = [...resumes]
@@ -41,6 +42,7 @@ export function DashboardPage() {
         <Metric icon={<Users size={19} />} label="Experienced" value={experienced} />
         <Metric icon={<UserCheck size={19} />} label="Verified" value={verified} />
         <Metric icon={<AlertTriangle size={19} />} label="Needs review" value={needsReview} />
+        <Metric icon={<FileClock size={19} />} label="On hold" value={onHold} />
         <Metric icon={<CheckCircle2 size={19} />} label="Accepted" value={accepted} />
         <Metric icon={<AlertTriangle size={19} />} label="Rejected" value={rejected} />
         <Metric icon={<FileClock size={19} />} label="Recent uploads" value={recent.length} />
@@ -64,6 +66,7 @@ export function DashboardPage() {
 function DecisionBadge({ decision }: { decision?: string | null }) {
   if (decision === "ACCEPTED") return <Badge tone="success">Accepted</Badge>;
   if (decision === "REJECTED") return <Badge tone="danger">Rejected</Badge>;
+  if (decision === "ON_HOLD") return <Badge tone="info">On Hold</Badge>;
   return <Badge tone="warning">Pending</Badge>;
 }
 

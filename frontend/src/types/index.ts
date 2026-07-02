@@ -1,5 +1,5 @@
 export type UUID = string;
-export type HRDecision = "PENDING" | "ACCEPTED" | "REJECTED";
+export type HRDecision = "PENDING" | "ON_HOLD" | "ACCEPTED" | "REJECTED";
 
 export interface ResumeListItem {
   id: UUID;
@@ -23,6 +23,9 @@ export interface ResumeListItem {
 
 export interface ResumeDetail extends ResumeListItem {
   notes?: string | null;
+  hr_notes?: string | null;
+  technical_notes?: string | null;
+  final_notes?: string | null;
   stored_file_name?: string | null;
 }
 
@@ -38,7 +41,9 @@ export interface ResumeUpdate {
   skills?: string[];
   cities?: string[];
   fresher?: boolean | null;
-  notes?: string | null;
+  hr_notes?: string | null;
+  technical_notes?: string | null;
+  final_notes?: string | null;
   hr_decision?: HRDecision | null;
 }
 
@@ -82,6 +87,9 @@ export interface SearchResult {
   is_verified?: boolean | null;
   hr_decision?: HRDecision | string | null;
   decision_at?: string | null;
+  hr_notes?: string | null;
+  technical_notes?: string | null;
+  final_notes?: string | null;
   uploaded_at?: string | null;
   [key: string]: unknown;
 }
@@ -132,4 +140,13 @@ export interface UploadResponse {
   email?: string | null;
   phone?: string | null;
   existing_resume_id?: UUID;
+}
+
+export interface UploadStatus {
+  active: boolean;
+  total: number;
+  current: number;
+  currentFile?: string;
+  step: string;
+  progress?: number | null;
 }

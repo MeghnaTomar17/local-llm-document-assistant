@@ -5,6 +5,7 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Loader } from "../components/ui/Loader";
+import { SkeletonRows } from "../components/ui/Skeleton";
 import { Table, type TableColumn } from "../components/ui/Table";
 import { usePagination } from "../hooks/usePagination";
 import { useAppData } from "../context/AppContext";
@@ -20,6 +21,7 @@ export function SearchPage() {
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [searchStep, setSearchStep] = useState("");
   const [showHistory, setShowHistory] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ResumeDetail | null>(null);
@@ -54,8 +56,10 @@ export function SearchPage() {
     const trimmed = query.trim();
     if (!trimmed) return;
     setLoading(true);
+    setSearchStep("Generating Search Query...");
     setError("");
     setSelected(null);
+    const timer = window.setTimeout(() => setSearchStep("Searching Candidates..."), 650);
     try {
       setResponse(await recruiterSearch(trimmed));
       setPage(1);
@@ -63,7 +67,9 @@ export function SearchPage() {
     } catch (err) {
       setError(getApiError(err));
     } finally {
+      window.clearTimeout(timer);
       setLoading(false);
+      setSearchStep("");
     }
   }
 
@@ -134,7 +140,7 @@ export function SearchPage() {
                 />
               )}
             </div>
-            {loadingHistory && <Loader label="Loading history" />}
+            {loadingHistory && <SkeletonRows count={5} />}
             {!loadingHistory && !history.length && <EmptyState icon={<History size={24} />} title="No saved recruiter searches." description="Review your recent candidate searches." />}
             {!loadingHistory && history.map((item) => (
               <article className="history-item" key={item.id}>
@@ -162,7 +168,12 @@ export function SearchPage() {
       </section>
 
       {error && <div className="error-banner">{error}</div>}
-      {loading && <Loader label="Searching resumes" />}
+      {loading && (
+        <section className="panel fade-in">
+          <Loader label={searchStep || "Searching Candidates..."} />
+          <SkeletonRows count={6} />
+        </section>
+      )}
 
       {response && !loading && (
         <section className="panel">
@@ -238,6 +249,7 @@ function updateSearchResponse(current: SearchResponse | null, resume: ResumeDeta
 function DecisionBadge({ decision }: { decision?: string | null }) {
   if (decision === "ACCEPTED") return <Badge tone="success">Accepted</Badge>;
   if (decision === "REJECTED") return <Badge tone="danger">Rejected</Badge>;
+  if (decision === "ON_HOLD") return <Badge tone="info">On Hold</Badge>;
   return <Badge tone="warning">Pending</Badge>;
 }
 

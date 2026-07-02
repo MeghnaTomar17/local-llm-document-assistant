@@ -12,11 +12,13 @@ EDITABLE_RESUME_FIELDS = {
     "skills",
     "cities",
     "fresher",
-    "notes",
+    "hr_notes",
+    "technical_notes",
+    "final_notes",
     "hr_decision",
 }
 
-HR_DECISIONS = {"PENDING", "ACCEPTED", "REJECTED"}
+HR_DECISIONS = {"PENDING", "ON_HOLD", "ACCEPTED", "REJECTED"}
 
 
 def create_resume(data: dict):

@@ -329,6 +329,11 @@ button:disabled {
   border-color: #efc4be;
 }
 
+.btn.is-disabled {
+  pointer-events: none;
+  opacity: 0.58;
+}
+
 .badge {
   min-height: 24px;
   border-radius: 999px;
@@ -432,30 +437,53 @@ button:disabled {
 }
 
 .active-resume-table .data-table {
+  min-width: 720px;
   table-layout: fixed;
 }
 
+.active-resume-table .data-table th,
+.active-resume-table .data-table td {
+  vertical-align: top;
+}
+
+.active-resume-table .data-table td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 .active-resume-table .candidate-column {
-  width: 20%;
+  width: 25%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .active-resume-table .skills-column {
-  width: 50%;
+  width: 45%;
   min-width: 0;
 }
 
 .active-resume-table .decision-column,
 .active-resume-table .status-column {
   width: 15%;
+  min-width: 132px;
+  padding-left: 14px;
+  padding-right: 14px;
   text-align: center;
 }
 
 .active-resume-table .decision-column .badge,
 .active-resume-table .status-column .badge {
   margin: 0 auto;
+  min-width: 92px;
+  justify-content: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.active-resume-table .active-skill-chip-list:not(.is-expanded) {
+  max-height: 48px;
+  overflow: hidden;
 }
 
 .skill-chip-list {
@@ -529,6 +557,8 @@ button:disabled {
 
 .center-screen {
   min-height: 100vh;
+  flex-direction: column;
+  padding: 24px;
 }
 
 .loader span {
@@ -540,9 +570,163 @@ button:disabled {
   animation: spin 0.8s linear infinite;
 }
 
+.loader-small {
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.loader-small span {
+  width: 13px;
+  height: 13px;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e9eef4;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.62), transparent);
+  animation: shimmer 1.35s infinite;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.skeleton-row {
+  height: 42px;
+}
+
+.skeleton-session {
+  pointer-events: none;
+  background: #ffffff;
+}
+
+.skeleton-line {
+  height: 12px;
+  width: 100%;
+}
+
+.skeleton-line-strong {
+  width: 72%;
+  height: 16px;
+}
+
+.skeleton-line-short {
+  width: 42%;
+}
+
+.skeleton-line-medium {
+  width: 58%;
+}
+
+.skeleton-line-title {
+  width: min(360px, 75%);
+  height: 20px;
+}
+
+.skeleton-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  flex: 0 0 auto;
+}
+
+.skeleton-fill {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  width: min(620px, 100%);
+}
+
+.skeleton-pill {
+  width: 86px;
+  height: 24px;
+  border-radius: 999px;
+}
+
+.skeleton-tabs {
+  width: 320px;
+  max-width: 100%;
+  height: 40px;
+}
+
+.skeleton-card {
+  min-height: 74px;
+}
+
+.startup-skeletons {
+  width: min(760px, 100%);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.skeleton-large {
+  min-height: 220px;
+}
+
+.fade-in {
+  animation: fadeIn 180ms ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.progress-track {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce5ee;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: #176b6a;
+  transition: width 180ms ease;
+}
+
+.progress-bar.is-indeterminate {
+  width: 42%;
+  animation: progressIndeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes progressIndeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(260%);
   }
 }
 
@@ -768,6 +952,11 @@ textarea {
   background: #eef6f6;
 }
 
+.upload-zone[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
 .upload-zone input {
   display: none;
 }
@@ -775,6 +964,17 @@ textarea {
 .upload-zone span {
   color: #647184;
   font-size: 0.86rem;
+}
+
+.upload-progress {
+  width: min(420px, 90%);
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
+.upload-progress small {
+  color: #647184;
 }
 
 .sql-panel {
@@ -903,11 +1103,21 @@ textarea {
 }
 
 .resume-preview-panel {
+  position: relative;
   min-height: 420px;
   border: 1px solid #e3e8ee;
   border-radius: 8px;
   overflow: hidden;
   background: #f8fafc;
+}
+
+.preview-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  background: rgba(248, 250, 252, 0.86);
 }
 
 .resume-preview-panel iframe {
@@ -1155,7 +1365,16 @@ textarea {
 }
 
 .notes-editor {
-  min-height: 320px;
+  min-height: 140px;
+}
+
+.note-section {
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  background: #fbfcfd;
 }
 
 .notes-meta {

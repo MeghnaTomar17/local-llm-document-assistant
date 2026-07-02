@@ -78,6 +78,9 @@ def build_resume_payload(
         "is_verified": False,
         "extraction_status": "SUCCESS",
         "notes": None,
+        "hr_notes": None,
+        "technical_notes": None,
+        "final_notes": None,
         "hr_decision": "PENDING",
     }
 

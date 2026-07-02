@@ -1,4 +1,4 @@
-import { CalendarDays, Check, Download, Eye, FileText, Mail, MapPin, MessageSquare, PencilLine, Phone, Pin, Save, Send, UserRound, X } from "lucide-react";
+import { CalendarDays, Check, CirclePause, Download, Eye, FileText, Mail, MapPin, MessageSquare, PencilLine, Phone, Pin, Save, Send, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { askResumeQuestion, getChatHistory } from "../../services/chatApi";
 import { getApiError } from "../../services/http";
@@ -45,8 +45,12 @@ export function ResumeWorkspace({
   const [question, setQuestion] = useState("");
   const [loadingChat, setLoadingChat] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [chatStep, setChatStep] = useState("");
   const [savingDecision, setSavingDecision] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const [preparingDownload, setPreparingDownload] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -70,7 +74,10 @@ export function ResumeWorkspace({
     setMessages((current) => [...current, userMessage]);
     setQuestion("");
     setAsking(true);
+    setChatStep("Thinking...");
     setError("");
+    const searchingTimer = window.setTimeout(() => setChatStep("Searching Resume..."), 500);
+    const generatingTimer = window.setTimeout(() => setChatStep("Generating Response..."), 1200);
 
     try {
       const response = await askResumeQuestion(trimmed, resume.session_id, resume.id);
@@ -79,7 +86,10 @@ export function ResumeWorkspace({
       setError(getApiError(err));
       setMessages((current) => current.filter((message) => message !== userMessage));
     } finally {
+      window.clearTimeout(searchingTimer);
+      window.clearTimeout(generatingTimer);
       setAsking(false);
+      setChatStep("");
     }
   }
 
@@ -105,16 +115,41 @@ export function ResumeWorkspace({
           </div>
         </div>
         <div className="workspace-actions">
-          <button className="btn btn-secondary" type="button" onClick={() => setPreviewOpen((current) => !current)}>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => {
+              setPreviewOpen((current) => !current);
+              setPreviewFailed(false);
+              if (!previewOpen && isPdf(resume.mime_type || resume.original_file_name)) setPreviewLoading(true);
+            }}
+          >
             <Eye size={16} />
             <span>{previewOpen ? "Hide Preview" : "Preview"}</span>
           </button>
-          <a className="btn btn-secondary" href={getResumeDownloadUrl(resume.id)} target="_blank" rel="noreferrer">
+          <a
+            className={`btn btn-secondary ${preparingDownload ? "is-disabled" : ""}`}
+            href={getResumeDownloadUrl(resume.id)}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              setPreparingDownload(true);
+              window.setTimeout(() => setPreparingDownload(false), 900);
+            }}
+            aria-disabled={preparingDownload}
+          >
             <Download size={16} />
-            <span>Download</span>
+            <span>{preparingDownload ? "Preparing Resume..." : "Download"}</span>
           </a>
           <div className="decision-actions">
             <span>{decisionLabel(resume.hr_decision)}</span>
+            <Button
+              icon={<CirclePause size={15} />}
+              disabled={savingDecision || resume.hr_decision === "ON_HOLD"}
+              onClick={() => saveDecision("ON_HOLD")}
+            >
+              On Hold
+            </Button>
             <Button
               variant="primary"
               icon={<Check size={15} />}
@@ -131,6 +166,7 @@ export function ResumeWorkspace({
             >
               Reject
             </Button>
+            {savingDecision && <Loader label="Saving..." />}
           </div>
         </div>
       </div>
@@ -144,7 +180,32 @@ export function ResumeWorkspace({
       {previewOpen && (
         <div className="resume-preview-panel">
           {isPdf(resume.mime_type || resume.original_file_name) ? (
-            <iframe title="Resume preview" src={getResumePreviewUrl(resume.id)} />
+            <>
+              {previewLoading && <div className="preview-loading"><Loader label="Loading Resume Preview..." /></div>}
+              {previewFailed ? (
+                <EmptyState
+                  icon={<FileText size={24} />}
+                  title="Preview unavailable."
+                  description="You can still download the resume."
+                  action={(
+                    <a className="btn btn-secondary" href={getResumeDownloadUrl(resume.id)} target="_blank" rel="noreferrer">
+                      <Download size={16} />
+                      <span>Download Resume</span>
+                    </a>
+                  )}
+                />
+              ) : (
+                <iframe
+                  title="Resume preview"
+                  src={getResumePreviewUrl(resume.id)}
+                  onLoad={() => setPreviewLoading(false)}
+                  onError={() => {
+                    setPreviewLoading(false);
+                    setPreviewFailed(true);
+                  }}
+                />
+              )}
+            </>
           ) : (
             <EmptyState
               icon={<FileText size={24} />}
@@ -181,6 +242,7 @@ export function ResumeWorkspace({
           question={question}
           setQuestion={setQuestion}
           onAsk={ask}
+          chatStep={chatStep}
         />
       )}
       {tab === "metadata" && (
@@ -210,7 +272,7 @@ export function ResumeWorkspace({
     try {
       const updated = await updateResume(resume.id as UUID, { hr_decision: decision });
       await onResumeSaved(updated);
-      onNotify(`Candidate ${decision.toLowerCase()}.`);
+      onNotify(`Decision saved: ${decisionLabel(decision)}.`);
     } catch (err) {
       setError(getApiError(err));
     } finally {
@@ -223,13 +285,15 @@ function DecisionBadge({ decision }: { decision?: HRDecision | null }) {
   const value = decision || "PENDING";
   if (value === "ACCEPTED") return <Badge tone="success">Accepted</Badge>;
   if (value === "REJECTED") return <Badge tone="danger">Rejected</Badge>;
-  return <Badge tone="warning">Pending Review</Badge>;
+  if (value === "ON_HOLD") return <Badge tone="info">On Hold</Badge>;
+  return <Badge tone="warning">Pending</Badge>;
 }
 
 function decisionLabel(decision?: HRDecision | null) {
   if (decision === "ACCEPTED") return "Accepted";
   if (decision === "REJECTED") return "Rejected";
-  return "Pending Review";
+  if (decision === "ON_HOLD") return "On Hold";
+  return "Pending";
 }
 
 function isDocx(value?: string | null) {
@@ -269,6 +333,7 @@ function ChatTab({
   question,
   setQuestion,
   onAsk,
+  chatStep,
 }: {
   messages: ChatMessage[];
   loading: boolean;
@@ -276,6 +341,7 @@ function ChatTab({
   question: string;
   setQuestion: (value: string) => void;
   onAsk: (text?: string) => void;
+  chatStep: string;
 }) {
   return (
     <div className="chat-workspace">
@@ -308,7 +374,7 @@ function ChatTab({
             {message.retrieval?.chunks?.length ? <Sources message={message} /> : null}
           </article>
         ))}
-        {asking && <Loader label="Thinking" />}
+        {asking && <Loader label={chatStep || "Thinking..."} />}
       </div>
 
       <form
@@ -331,7 +397,6 @@ function MetadataForm({ resume, onSaved }: { resume: ResumeDetail; onSaved: (res
     email: resume.email || "",
     phone_number: resume.phone_number || "",
     fresher: resume.fresher ?? null,
-    notes: resume.notes || "",
   });
   const [skills, setSkills] = useState((resume.skills || []).join(", "));
   const [cities, setCities] = useState((resume.cities || []).join(", "));
@@ -345,7 +410,6 @@ function MetadataForm({ resume, onSaved }: { resume: ResumeDetail; onSaved: (res
       email: resume.email || "",
       phone_number: resume.phone_number || "",
       fresher: resume.fresher ?? null,
-      notes: resume.notes || "",
     });
     setSkills((resume.skills || []).join(", "));
     setCities((resume.cities || []).join(", "));
@@ -400,68 +464,113 @@ function MetadataForm({ resume, onSaved }: { resume: ResumeDetail; onSaved: (res
 }
 
 function NotesForm({ resume, onSaved }: { resume: ResumeDetail; onSaved: (resume: ResumeDetail) => Promise<void> }) {
-  const [notes, setNotes] = useState(resume.notes || "");
-  const [saving, setSaving] = useState(false);
+  const legacyNotes = resume.hr_notes || resume.notes || "";
   const [error, setError] = useState("");
-  const isDirty = notes !== (resume.notes || "");
-  const [saveStatus, setSaveStatus] = useState("Saved");
+
+  return (
+    <div className="edit-form">
+      <p className="helper-text span-2">Keep private notes and observations for future reference.</p>
+      {error && <div className="error-banner">{error}</div>}
+      <NoteSection
+        resumeId={resume.id as UUID}
+        label="HR Notes"
+        field="hr_notes"
+        value={legacyNotes}
+        onSaved={onSaved}
+        onError={setError}
+      />
+      <NoteSection
+        resumeId={resume.id as UUID}
+        label="Technical Notes"
+        field="technical_notes"
+        value={resume.technical_notes || ""}
+        onSaved={onSaved}
+        onError={setError}
+      />
+      <NoteSection
+        resumeId={resume.id as UUID}
+        label="Final Notes"
+        field="final_notes"
+        value={resume.final_notes || ""}
+        onSaved={onSaved}
+        onError={setError}
+      />
+    </div>
+  );
+}
+
+type NoteField = "hr_notes" | "technical_notes" | "final_notes";
+
+function NoteSection({
+  resumeId,
+  label,
+  field,
+  value,
+  onSaved,
+  onError,
+}: {
+  resumeId: UUID;
+  label: string;
+  field: NoteField;
+  value: string;
+  onSaved: (resume: ResumeDetail) => Promise<void>;
+  onError: (message: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  const [status, setStatus] = useState("Saved");
+  const [saving, setSaving] = useState(false);
+  const isDirty = text !== value;
 
   useEffect(() => {
-    setNotes(resume.notes || "");
-    setError("");
-    setSaveStatus("Saved");
-  }, [resume.id, resume.updated_at]);
+    setText(value);
+    setStatus("Saved");
+  }, [resumeId, value]);
 
   useEffect(() => {
     if (!isDirty) {
-      setSaveStatus("Saved");
+      setStatus("Saved");
       return;
     }
 
-    setSaveStatus("Autosaving...");
+    setStatus("Autosaving...");
     const timer = window.setTimeout(() => {
-      updateResume(resume.id as UUID, { notes })
-        .then(async (updated) => {
-          await onSaved(updated);
-          setSaveStatus("Saved");
-        })
-        .catch((err) => {
-          setError(getApiError(err));
-          setSaveStatus("Autosave failed");
-        });
+      persist();
     }, 900);
 
     return () => window.clearTimeout(timer);
-  }, [isDirty, notes, resume.id, onSaved]);
+  }, [isDirty, text, resumeId, field]);
 
-  async function save() {
+  async function persist() {
     setSaving(true);
-    setError("");
+    onError("");
     try {
-      setSaveStatus("Saving...");
-      await onSaved(await updateResume(resume.id as UUID, { notes }));
-      setSaveStatus("Saved");
+      const updated = await updateResume(resumeId, { [field]: text } as ResumeUpdate);
+      await onSaved(updated);
+      setStatus("Saved");
     } catch (err) {
-      setError(getApiError(err));
-      setSaveStatus("Save failed");
+      setStatus("Autosave failed");
+      onError(getApiError(err));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="edit-form">
-      <p className="helper-text span-2">Keep private notes and observations for future reference.</p>
-      {error && <div className="error-banner">{error}</div>}
-      <label>Recruiter Notes<textarea className="notes-editor" rows={14} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
+    <section className="note-section span-2">
+      <label>
+        {label}
+        <textarea className="notes-editor" rows={6} value={text} onChange={(event) => setText(event.target.value)} />
+      </label>
       <div className="notes-meta">
-        <span>{saveStatus}</span>
-        <span>{notes.length.toLocaleString()} characters</span>
+        <span>{status}</span>
+        <span>{text.length.toLocaleString()} characters</span>
       </div>
       <div className="form-actions">
-        <Button variant="primary" icon={<MessageSquare size={16} />} disabled={saving} onClick={save}>{saving ? "Saving" : "Save Notes"}</Button>
+        <Button variant="primary" icon={<MessageSquare size={16} />} disabled={saving || !isDirty} onClick={persist}>
+          {saving ? "Saving" : `Save ${label}`}
+        </Button>
       </div>
-    </div>
+    </section>
   );
 }
 

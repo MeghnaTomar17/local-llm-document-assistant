@@ -275,6 +275,12 @@ class Resume(Base):
 
     notes: Mapped[str | None] = mapped_column(Text)
 
+    hr_notes: Mapped[str | None] = mapped_column(Text)
+
+    technical_notes: Mapped[str | None] = mapped_column(Text)
+
+    final_notes: Mapped[str | None] = mapped_column(Text)
+
     hr_decision: Mapped[str] = mapped_column(
         String(20),
         default="PENDING",

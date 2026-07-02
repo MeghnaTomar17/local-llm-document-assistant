@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-HRDecision = Literal["PENDING", "ACCEPTED", "REJECTED"]
+HRDecision = Literal["PENDING", "ON_HOLD", "ACCEPTED", "REJECTED"]
 
 
 class ResumeResponse(BaseModel):
@@ -28,6 +28,9 @@ class ResumeResponse(BaseModel):
     is_verified: bool
     extraction_status: str
     notes: str | None = None
+    hr_notes: str | None = None
+    technical_notes: str | None = None
+    final_notes: str | None = None
     hr_decision: HRDecision = "PENDING"
     decision_at: datetime | None = None
     uploaded_at: datetime
@@ -43,7 +46,9 @@ class ResumeUpdate(BaseModel):
     skills: list[str] | None = None
     cities: list[str] | None = None
     fresher: bool | None = None
-    notes: str | None = None
+    hr_notes: str | None = None
+    technical_notes: str | None = None
+    final_notes: str | None = None
     hr_decision: HRDecision | None = None
 
 
@@ -63,6 +68,9 @@ class ResumeListItem(BaseModel):
     is_verified: bool
     extraction_status: str
     notes: str | None = None
+    hr_notes: str | None = None
+    technical_notes: str | None = None
+    final_notes: str | None = None
     hr_decision: HRDecision = "PENDING"
     decision_at: datetime | None = None
     uploaded_at: datetime

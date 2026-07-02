@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { getApiError } from "../services/http";
 import { listResumes } from "../services/resumeApi";
 import { createSession, listSessionResumes, listSessions, switchSession, uploadResumes } from "../services/sessionApi";
-import type { RecruiterSession, ResumeListItem, SessionsResponse, UUID, UploadResponse } from "../types";
+import type { RecruiterSession, ResumeListItem, SessionsResponse, UUID, UploadResponse, UploadStatus } from "../types";
 
 interface AppContextValue {
   resumes: ResumeListItem[];
@@ -14,6 +14,7 @@ interface AppContextValue {
   error: string;
   notice: string;
   duplicateWarning: UploadResponse | null;
+  uploadStatus: UploadStatus;
   refresh: () => Promise<void>;
   setNotice: (notice: string) => void;
   clearDuplicateWarning: () => void;
@@ -36,6 +37,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState<UploadResponse | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
+    active: false,
+    total: 0,
+    current: 0,
+    step: "",
+    progress: null,
+  });
 
   async function loadActiveSessionResumes(sessionId: UUID | null) {
     if (!sessionId) {
@@ -48,12 +56,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   async function refresh() {
     setError("");
-    const [resumeData, sessionData] = await Promise.all([listResumes(), listSessions()]);
-    setResumes(resumeData.resumes || []);
-    setSessions(sessionData.sessions || []);
-    const nextActive = sessionData.active_session_id || firstSessionId(sessionData) || null;
-    setActiveSessionId(nextActive);
-    await loadActiveSessionResumes(nextActive);
+    setBusy(true);
+    try {
+      const [resumeData, sessionData] = await Promise.all([listResumes(), listSessions()]);
+      setResumes(resumeData.resumes || []);
+      setSessions(sessionData.sessions || []);
+      const nextActive = sessionData.active_session_id || firstSessionId(sessionData) || null;
+      setActiveSessionId(nextActive);
+      await loadActiveSessionResumes(nextActive);
+    } catch (err) {
+      setError(getApiError(err));
+      throw err;
+    } finally {
+      setBusy(false);
+    }
   }
 
   useEffect(() => {
@@ -103,8 +119,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setBusy(true);
     setError("");
+    setUploadStatus({
+      active: true,
+      total: validFiles.length,
+      current: validFiles.length ? 1 : 0,
+      currentFile: validFiles[0]?.name,
+      step: "Uploading Resume...",
+      progress: validFiles.length > 1 ? 8 : null,
+    });
     try {
+      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Extracting Metadata...", progress: 26 } : current), 500);
+      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Generating Resume Chunks...", progress: 48 } : current), 1300);
+      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Building Embeddings...", progress: 66 } : current), 2100);
+      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Saving to Database...", progress: 82 } : current), 2900);
+      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Creating Recruiter Session...", progress: 92 } : current), 3600);
       const response = await uploadResumes(validFiles, sessionId);
+      setUploadStatus((current) => ({ ...current, step: "Done", progress: 100 }));
       if (response.duplicate) {
         setDuplicateWarning(response);
         return;
@@ -122,6 +152,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setError(getApiError(err));
     } finally {
       setBusy(false);
+      window.setTimeout(() => {
+        setUploadStatus({ active: false, total: 0, current: 0, step: "", progress: null });
+      }, 700);
     }
   }
 
@@ -155,6 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       error,
       notice,
       duplicateWarning,
+      uploadStatus,
       refresh,
       setNotice,
       clearDuplicateWarning: () => setDuplicateWarning(null),
@@ -164,7 +198,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       handleSwitchSession,
       handleUpload,
     }),
-    [resumes, sessions, activeSessionId, activeSessionResumes, loading, busy, error, notice, duplicateWarning],
+    [resumes, sessions, activeSessionId, activeSessionResumes, loading, busy, error, notice, duplicateWarning, uploadStatus],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -36,7 +36,9 @@ export function ResumeDetailsPanel({
       email: resume.email || "",
       phone_number: resume.phone_number || "",
       fresher: resume.fresher ?? null,
-      notes: resume.notes || "",
+      hr_notes: resume.hr_notes || resume.notes || "",
+      technical_notes: resume.technical_notes || "",
+      final_notes: resume.final_notes || "",
     });
     setSkills(toCsv(resume.skills));
     setCities(toCsv(resume.cities));
@@ -111,8 +113,16 @@ export function ResumeDetailsPanel({
         </select>
       </label>
       <label>
-        Notes
-        <textarea value={form.notes || ""} onChange={(event) => setForm({ ...form, notes: event.target.value })} rows={4} />
+        HR Notes
+        <textarea value={form.hr_notes || ""} onChange={(event) => setForm({ ...form, hr_notes: event.target.value })} rows={3} />
+      </label>
+      <label>
+        Technical Notes
+        <textarea value={form.technical_notes || ""} onChange={(event) => setForm({ ...form, technical_notes: event.target.value })} rows={3} />
+      </label>
+      <label>
+        Final Notes
+        <textarea value={form.final_notes || ""} onChange={(event) => setForm({ ...form, final_notes: event.target.value })} rows={3} />
       </label>
 
       <div className="panel-actions">

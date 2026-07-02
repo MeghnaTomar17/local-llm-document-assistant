@@ -24,6 +24,9 @@ class RecruiterResumeResult(BaseModel):
     uploaded_at: datetime | str | None = None
     updated_at: datetime | str | None = None
     notes: str | None = None
+    hr_notes: str | None = None
+    technical_notes: str | None = None
+    final_notes: str | None = None
     hr_decision: str | None = None
     decision_at: datetime | str | None = None
 

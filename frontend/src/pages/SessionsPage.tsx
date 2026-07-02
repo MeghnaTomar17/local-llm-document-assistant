@@ -7,14 +7,18 @@ import { getResume } from "../services/resumeApi";
 import { UploadPanel } from "../components/upload/UploadPanel";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Loader } from "../components/ui/Loader";
+import { SessionSkeletons, WorkspaceSkeleton } from "../components/ui/Skeleton";
 import { Table, type TableColumn } from "../components/ui/Table";
 import type { RecruiterSession, ResumeDetail, ResumeListItem, UUID } from "../types";
 
 export function SessionsPage() {
-  const { sessions, activeSessionId, activeSessionResumes, busy, setNotice, updateResumeInState, handleSwitchSession, handleUpload } = useAppData();
+  const { sessions, activeSessionId, activeSessionResumes, busy, setNotice, updateResumeInState, handleSwitchSession, handleUpload, uploadStatus } = useAppData();
   const [candidateSearch, setCandidateSearch] = useState("");
   const [selectedResume, setSelectedResume] = useState<ResumeDetail | null>(null);
   const [workspaceError, setWorkspaceError] = useState("");
+  const [switchingSessionId, setSwitchingSessionId] = useState<UUID | null>(null);
+  const [openingResumeId, setOpeningResumeId] = useState<UUID | null>(null);
   const searchTerm = candidateSearch.trim().toLowerCase();
   const displayedSessions = searchTerm
     ? sessions.filter((session) => sessionSearchText(session).includes(searchTerm))
@@ -50,12 +54,13 @@ export function SessionsPage() {
             />
           </div>
           <div className="session-list">
-            {displayedSessions.length ? displayedSessions.map((session) => (
+            {busy && !displayedSessions.length ? <SessionSkeletons /> : displayedSessions.length ? displayedSessions.map((session) => (
               <SessionButton
                 key={session.session_id || session.id}
                 session={session}
-                active={activeSessionId === (session.session_id || session.id)}
+                active={(switchingSessionId || activeSessionId) === (session.session_id || session.id)}
                 disabled={busy}
+                loading={switchingSessionId === (session.session_id || session.id)}
                 onClick={() => openSession(session)}
               />
             )) : (
@@ -73,7 +78,7 @@ export function SessionsPage() {
             <h3>Active session resumes</h3>
             <Badge tone="info">{activeSessionResumes.length} resumes</Badge>
           </div>
-          <UploadPanel disabled={busy} sessionId={null} onUpload={handleUpload} />
+          <UploadPanel disabled={busy || uploadStatus.active} sessionId={null} onUpload={handleUpload} status={uploadStatus} />
 
           <div className="active-resume-table">
             {activeSessionResumes.length ? (
@@ -90,7 +95,9 @@ export function SessionsPage() {
 
           <div className="embedded-workspace">
             {workspaceError && <div className="error-banner">{workspaceError}</div>}
-            {selectedResume ? (
+            {openingResumeId ? (
+              <WorkspaceSkeleton />
+            ) : selectedResume ? (
               <ResumeWorkspace
                 resume={selectedResume}
                 onNotify={setNotice}
@@ -113,23 +120,31 @@ export function SessionsPage() {
     if (!sessionId) return;
     setWorkspaceError("");
     try {
+      setSwitchingSessionId(sessionId);
       await handleSwitchSession(sessionId);
       const resumeId = session.resume_id || session.document?.resume_id;
       if (resumeId) {
+        setOpeningResumeId(resumeId);
         setSelectedResume(await getResume(resumeId));
       }
     } catch (err) {
-      setWorkspaceError(getApiError(err));
+      setWorkspaceError("Unable to load candidate. Please try again.");
+    } finally {
+      setSwitchingSessionId(null);
+      setOpeningResumeId(null);
     }
   }
 
   async function openResume(resumeId?: UUID | null) {
     if (!resumeId) return;
     setWorkspaceError("");
+    setOpeningResumeId(resumeId);
     try {
       setSelectedResume(await getResume(resumeId));
     } catch (err) {
-      setWorkspaceError(getApiError(err));
+      setWorkspaceError("Unable to load candidate. Please try again.");
+    } finally {
+      setOpeningResumeId(null);
     }
   }
 }
@@ -151,11 +166,13 @@ function SessionButton({
   session,
   active,
   disabled,
+  loading,
   onClick,
 }: {
   session: RecruiterSession;
   active: boolean;
   disabled: boolean;
+  loading?: boolean;
   onClick: () => void;
 }) {
   const candidateName = session.candidate_name || session.title || session.display_name || session.document?.name || "Resume Session";
@@ -163,7 +180,7 @@ function SessionButton({
 
   return (
     <button className={`session-row ${active ? "is-active" : ""}`} disabled={disabled} onClick={onClick}>
-      <strong><UserRound size={15} /> {candidateName}</strong>
+      <strong><UserRound size={15} /> {candidateName} {loading && <Loader label="" />}</strong>
       <span>{primaryCity ? <><MapPin size={13} /> {primaryCity}</> : <><FileText size={13} /> {session.document_count || 0} resume{(session.document_count || 0) === 1 ? "" : "s"}</>}</span>
       <span><MessageSquare size={13} /> {session.message_count || 0} chats <DecisionBadge decision={session.hr_decision} compact /></span>
     </button>
@@ -174,7 +191,8 @@ function DecisionBadge({ decision, compact = false }: { decision?: string | null
   const value = decision || "PENDING";
   if (value === "ACCEPTED") return <Badge tone="success">{compact ? "Accepted" : "Accepted"}</Badge>;
   if (value === "REJECTED") return <Badge tone="danger">{compact ? "Rejected" : "Rejected"}</Badge>;
-  return <Badge tone="warning">{compact ? "Pending" : "Pending Review"}</Badge>;
+  if (value === "ON_HOLD") return <Badge tone="info">{compact ? "Hold" : "On Hold"}</Badge>;
+  return <Badge tone="warning">Pending</Badge>;
 }
 
 function primarySessionCity(session: RecruiterSession) {
@@ -186,15 +204,15 @@ function primarySessionCity(session: RecruiterSession) {
 function SkillChips({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false);
   if (!skills.length) return "-";
-  const visibleSkills = expanded ? skills : skills.slice(0, 5);
+  const visibleSkills = expanded ? skills : skills.slice(0, 3);
   const remainingCount = skills.length - visibleSkills.length;
 
   return (
-    <div className="skill-chip-list">
+    <div className={`skill-chip-list active-skill-chip-list ${expanded ? "is-expanded" : ""}`.trim()}>
       {visibleSkills.map((skill, index) => (
         <span className="skill-chip" key={`${skill}-${index}`}>{skill}</span>
       ))}
-      {skills.length > 5 && (
+      {skills.length > 3 && (
         <button
           className="skill-chip skill-chip-more"
           type="button"

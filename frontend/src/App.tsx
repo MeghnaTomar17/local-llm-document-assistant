@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppLayout, type PageKey } from "./components/layout/AppLayout";
 import { Loader } from "./components/ui/Loader";
+import { SkeletonBlock } from "./components/ui/Skeleton";
 import { AppProvider, useAppData } from "./context/AppContext";
 import { DashboardPage } from "./pages/DashboardPage";
 import { SearchPage } from "./pages/SearchPage";
@@ -13,7 +14,12 @@ function AppContent() {
   if (loading) {
     return (
       <main className="center-screen">
-        <Loader label="Loading recruiter workspace" />
+        <Loader label="Loading recruiter workspace..." />
+        <div className="startup-skeletons" aria-hidden="true">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <SkeletonBlock className="skeleton-card" key={index} />
+          ))}
+        </div>
       </main>
     );
   }

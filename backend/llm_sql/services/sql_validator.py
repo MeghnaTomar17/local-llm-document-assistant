@@ -33,7 +33,9 @@ ALLOWED_SELECT_COLUMNS = {
     "extraction_status",
     "uploaded_at",
     "updated_at",
-    "notes",
+    "hr_notes",
+    "technical_notes",
+    "final_notes",
     "hr_decision",
     "decision_at",
 }

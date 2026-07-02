@@ -36,7 +36,11 @@ processing_status,
 extraction_status,
 uploaded_at,
 updated_at,
-notes.
+hr_notes,
+technical_notes,
+final_notes,
+hr_decision,
+decision_at.
 
 Do not select internal columns:
 resume_hash,
@@ -56,28 +60,28 @@ Examples:
 
 Question: Find Python developers.
 SQL:
-SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, hr_notes, technical_notes, final_notes, hr_decision, decision_at
 FROM resumes
 WHERE skills::text ILIKE '%Python%'
 LIMIT 100;
 
 Question: Find candidates from Delhi.
 SQL:
-SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, hr_notes, technical_notes, final_notes, hr_decision, decision_at
 FROM resumes
 WHERE cities::text ILIKE '%Delhi%'
 LIMIT 100;
 
 Question: Find freshers.
 SQL:
-SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, hr_notes, technical_notes, final_notes, hr_decision, decision_at
 FROM resumes
 WHERE fresher = true
 LIMIT 100;
 
 Question: Find experienced GIS candidates from Chennai.
 SQL:
-SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, hr_notes, technical_notes, final_notes, hr_decision, decision_at
 FROM resumes
 WHERE fresher = false
 AND skills::text ILIKE '%GIS%'
@@ -86,7 +90,7 @@ LIMIT 100;
 
 Question: Find verified React candidates.
 SQL:
-SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, hr_notes, technical_notes, final_notes, hr_decision, decision_at
 FROM resumes
 WHERE is_verified = true
 AND skills::text ILIKE '%React%'
@@ -94,7 +98,7 @@ LIMIT 100;
 
 Question: Show the latest uploaded resumes.
 SQL:
-SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, notes, hr_decision, decision_at
+SELECT id, candidate_name, email, phone_number, skills, cities, fresher, is_verified, processing_status, extraction_status, uploaded_at, updated_at, hr_notes, technical_notes, final_notes, hr_decision, decision_at
 FROM resumes
 ORDER BY uploaded_at DESC
 LIMIT 100;
