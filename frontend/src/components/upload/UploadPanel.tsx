@@ -7,11 +7,15 @@ export function UploadPanel({
   sessionId,
   onUpload,
   status,
+  disabledTitle,
+  disabledDescription,
 }: {
   disabled?: boolean;
   sessionId?: UUID | null;
   onUpload: (files: File[], sessionId?: UUID | null) => void;
   status?: UploadStatus;
+  disabledTitle?: string;
+  disabledDescription?: string;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -41,12 +45,12 @@ export function UploadPanel({
       onClick={() => !disabled && inputRef.current?.click()}
     >
       <UploadCloud size={28} />
-      <strong>{disabled ? status?.step || "Processing resumes" : "Drag & Drop Resume"}</strong>
+      <strong>{disabled ? status?.step || disabledTitle || "Opening candidate workspace" : "Drag & Drop Resume"}</strong>
       <span>
         {disabled && (status?.total || 0) > 1
           ? `Processing Resume ${status.current} of ${status.total}${status.currentFile ? `: ${status.currentFile}` : ""}`
           : disabled
-            ? "Preparing resumes for review."
+            ? disabledDescription || "Loading this candidate for review."
             : "Upload one or multiple resumes in PDF or DOCX format."}
       </span>
       {disabled && (

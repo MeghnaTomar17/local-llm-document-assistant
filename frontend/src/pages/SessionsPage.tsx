@@ -78,7 +78,14 @@ export function SessionsPage() {
             <h3>Active session resumes</h3>
             <Badge tone="info">{activeSessionResumes.length} resumes</Badge>
           </div>
-          <UploadPanel disabled={busy || uploadStatus.active} sessionId={null} onUpload={handleUpload} status={uploadStatus} />
+          <UploadPanel
+            disabled={busy || uploadStatus.active}
+            sessionId={null}
+            onUpload={handleUpload}
+            status={uploadStatus}
+            disabledTitle={uploadStatus.active ? undefined : "Opening candidate workspace"}
+            disabledDescription={uploadStatus.active ? undefined : "Loading this candidate's individual workspace."}
+          />
 
           <div className="active-resume-table">
             {activeSessionResumes.length ? (
