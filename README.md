@@ -7,7 +7,7 @@ Resume Intelligence Assistant is built for recruiters who need speed, privacy, a
 The core idea is simple:
 
 ```text
-Upload resumes -> Extract candidate data -> Review and verify -> Search candidates -> Chat with each resume -> Accept or reject
+Upload resumes -> Extract candidate data -> Review and verify -> Search candidates -> Chat with each resume -> decide next action
 ```
 
 Everything important runs locally. Candidate resumes, extracted metadata, resume chunks, chat history, uploaded file blobs, and recruiter decisions are stored in PostgreSQL and local project storage. Local LLMs handle extraction and answering without sending sensitive candidate data to cloud APIs.
@@ -22,10 +22,11 @@ Everything important runs locally. Candidate resumes, extracted metadata, resume
 - Resume-aware chunking persisted in PostgreSQL for faster session reloads.
 - Candidate-level isolated chat sessions, even when resumes were uploaded together.
 - Natural-language recruiter search powered by validated SQL generation.
-- HR decision workflow: Pending, Accepted, Rejected.
+- HR decision workflow: Pending, On Hold, Accepted, Rejected.
 - Smart duplicate detection using file hash, email, phone, name + email, and name + phone.
 - Inline resume preview and direct download.
 - Bulk folder processing for large resume datasets.
+- Three independent recruiter note sections: HR Notes, Technical Notes, and Final Notes.
 
 ---
 
@@ -52,7 +53,7 @@ The Sessions page is the main recruiter workspace.
 - Upload one or multiple resumes.
 - View the active resume summary table.
 - Open the embedded Resume Workspace for the selected candidate.
-- Preview, download, accept, reject, edit metadata, add notes, and chat with the resume assistant.
+- Preview, download, mark On Hold, accept, reject, edit metadata, add notes, and chat with the resume assistant.
 
 ### Resume Workspace
 
@@ -122,10 +123,12 @@ Upload
   -> Extract metadata with local LLM
   -> Validate metadata deterministically
   -> Detect duplicates
-  -> Chunk resume by logical sections
+  -> Chunk resume by logical sections once per unique resume
   -> Persist chunks
   -> Build FAISS index for chat
 ```
+
+After the first upload, the assistant reloads resume chunks from PostgreSQL and rebuilds FAISS from stored chunk content. It does not parse or rechunk the original resume again unless the file content changes or an administrator explicitly reprocesses it.
 
 ### Metadata Extraction
 
@@ -137,6 +140,10 @@ Extracted fields include:
 - Skills
 - Cities
 - Fresher status
+- HR decision
+- HR Notes
+- Technical Notes
+- Final Notes
 
 Recruiter-editable fields:
 
@@ -146,7 +153,9 @@ Recruiter-editable fields:
 - Skills
 - Cities
 - Fresher status
-- Notes
+- HR Notes
+- Technical Notes
+- Final Notes
 - HR decision
 
 ### Validation
@@ -345,7 +354,14 @@ Current migration set includes support for:
 - Chat history
 - Recruiter search history
 - Resume chunks
-- HR decisions
+- HR decisions including On Hold
+- Split reviewer notes: HR Notes, Technical Notes, Final Notes
+
+For an existing database, apply every file in `database/migrations/` in order, including:
+
+```bash
+psql -U postgres -d resume_platform -f database/migrations/010_extend_reviewer_workflow.sql
+```
 
 ### 5. Configure Ollama
 
@@ -472,8 +488,8 @@ Bulk processing uses the same extraction, validation, duplicate detection, and p
 5. Ask resume-specific questions
 6. Search the full database with recruiter questions
 7. Preview or download resumes
-8. Add private notes
-9. Mark candidates as accepted or rejected
+8. Add HR, technical, and final notes
+9. Mark candidates as pending, on hold, accepted, or rejected
 ```
 
 ---
@@ -486,6 +502,7 @@ The platform is designed for local and private operation:
 - LLM calls use local Ollama models.
 - Candidate data is stored in your PostgreSQL database.
 - Uploaded files are stored locally and in PostgreSQL.
+- Resume chunks are stored in PostgreSQL and reused for later chat sessions.
 - No cloud LLM API is required.
 
 ---

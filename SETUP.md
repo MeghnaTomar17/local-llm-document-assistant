@@ -1,6 +1,14 @@
 # Setup Guide
 
-This guide is for setting up the project on a PC that may already have the older version of the database with only the initial `resumes` table.
+This guide sets up the current Resume Intelligence Assistant on a PC. It also covers upgrading an older database that originally had only the first `resumes` table.
+
+## Prerequisites
+
+- Python 3.11+ recommended.
+- Node.js 18+ recommended.
+- PostgreSQL running locally.
+- Ollama installed locally.
+- Git, if updating through source control.
 
 ## 1. Update the Project
 
@@ -83,6 +91,7 @@ psql -U postgres -d resume_platform -f database/migrations/006_decouple_recruite
 psql -U postgres -d resume_platform -f database/migrations/007_create_resume_chunks.sql
 psql -U postgres -d resume_platform -f database/migrations/008_add_resume_chunks_unique_constraint.sql
 psql -U postgres -d resume_platform -f database/migrations/009_add_hr_decision.sql
+psql -U postgres -d resume_platform -f database/migrations/010_extend_reviewer_workflow.sql
 ```
 
 If a migration says something already exists, that is usually fine. Continue with the remaining migrations.
@@ -145,7 +154,10 @@ Check these things after setup:
 - Uploading a PDF or DOCX works.
 - Candidate metadata is saved.
 - Editing candidate details updates after refresh.
+- HR Notes, Technical Notes, and Final Notes save correctly.
+- HR decision supports Pending, On Hold, Accepted, and Rejected.
 - Chat works for one selected candidate only.
+- Reopening a resume loads stored chunks from PostgreSQL instead of regenerating them.
 - Recruiter Search returns results.
 - Resume download works.
 
@@ -156,5 +168,7 @@ If the backend says a database column is missing, re-run the migrations from ste
 If the frontend cannot connect, confirm the backend is running at `http://localhost:8000`.
 
 If chat or extraction fails, confirm Ollama is running and `llama3.2:3b` is installed.
+
+If chat opens but has no resume context, confirm `resume_chunks` contains rows for that resume. New uploads create chunks during the first upload and reuse them later.
 
 If dependencies fail to install, check Python, Node.js, npm, and PostgreSQL are installed correctly.
