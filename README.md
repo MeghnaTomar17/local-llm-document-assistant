@@ -1,151 +1,126 @@
 # Resume Intelligence Assistant
 
-> A private, local-first ATS-style resume intelligence platform for uploading resumes, extracting candidate metadata, searching talent with natural language, chatting with individual resumes, and managing hiring decisions.
+> A local-first recruiter workspace for uploading resumes, extracting candidate details, searching talent in plain English, chatting with individual resumes, and tracking hiring decisions.
 
-Resume Intelligence Assistant is built for recruiters who need speed, privacy, and control. It combines a FastAPI backend, React recruiter console, PostgreSQL persistence, local Ollama models, resume-aware chunking, FAISS retrieval, and deterministic validation into one practical hiring workflow.
-
-The core idea is simple:
+Resume Intelligence Assistant turns a folder of resumes into a private, searchable candidate database. It combines a FastAPI backend, React recruiter console, PostgreSQL persistence, local Ollama models, resume-aware chunking, FAISS retrieval, and recruiter-friendly workflows into one ATS-style application.
 
 ```text
-Upload resumes -> Extract candidate data -> Review and verify -> Search candidates -> Chat with each resume -> decide next action
+Upload resumes -> Extract candidate data -> Review -> Search -> Chat -> Decide
 ```
 
-Everything important runs locally. Candidate resumes, extracted metadata, resume chunks, chat history, uploaded file blobs, and recruiter decisions are stored in PostgreSQL and local project storage. Local LLMs handle extraction and answering without sending sensitive candidate data to cloud APIs.
+No cloud LLM is required. Resume files, metadata, chunks, chat history, notes, and decisions stay on your machine and in your PostgreSQL database.
 
 ---
 
-## What Makes It Stand Out
+## Why It Stands Out
 
-- Local-first AI resume processing with Ollama and Llama 3.2.
-- Recruiter-focused React interface inspired by modern ATS tools.
-- PostgreSQL-backed resume database with file blobs and editable metadata.
-- Resume-aware chunking persisted in PostgreSQL for faster session reloads.
-- Candidate-level isolated chat sessions, even when resumes were uploaded together.
-- Natural-language recruiter search powered by validated SQL generation.
+- Private local AI workflow using Ollama.
+- Recruiter-friendly React interface with dashboard, sessions, resume workspace, and search.
+- PostgreSQL source of truth for resumes, metadata, file blobs, chunks, notes, decisions, sessions, and search history.
+- Uploaded resumes are stored both on disk and inside PostgreSQL as `BYTEA`.
+- Candidate-level isolated resume workspaces and chat history.
+- Natural-language recruiter search with SQL validation before execution.
+- Resume-aware chunks are persisted once and reused later, avoiding repeated PDF parsing.
+- Batch uploads show live per-resume progress.
+- Duplicate detection prevents repeated candidate records.
+- Editable metadata with verification status.
 - HR decision workflow: Pending, On Hold, Accepted, Rejected.
-- Smart duplicate detection using file hash, email, phone, name + email, and name + phone.
-- Inline resume preview and direct download.
-- Bulk folder processing for large resume datasets.
-- Three independent recruiter note sections: HR Notes, Technical Notes, and Final Notes.
+- Split recruiter notes: HR Notes, Technical Notes, Final Notes.
 
 ---
 
-## Product Tour
+## Product Overview
 
 ### Dashboard
 
-Get a clean overview of the candidate database:
+See the health of the candidate database at a glance:
 
 - Total resumes
 - Freshers
 - Experienced candidates
 - Verified candidates
-- Needs review
+- Candidates needing review
 - Accepted and rejected candidates
 - Recent uploads
 
 ### Sessions
 
-The Sessions page is the main recruiter workspace.
+The main resume review area.
 
-- Search candidates live from the left sidebar.
-- Select a candidate and continue reviewing instantly.
-- Upload one or multiple resumes.
-- View the active resume summary table.
-- Open the embedded Resume Workspace for the selected candidate.
-- Preview, download, mark On Hold, accept, reject, edit metadata, add notes, and chat with the resume assistant.
+- Search candidates live from the sidebar.
+- Upload one or many resumes.
+- Watch batch upload progress resume by resume.
+- Open one candidate workspace at a time.
+- Review extracted details, preview the resume, download the original file, chat with the resume, and update hiring decisions.
 
 ### Resume Workspace
 
-Each candidate has an isolated workspace:
+Each candidate has an individual workspace:
 
-- Candidate details and contact summary
-- Fresher or experienced badge
-- Verification badge
-- HR decision badge
-- Inline preview for PDFs
-- Download fallback for DOCX or unsupported preview formats
-- Resume, Chat, Metadata, and Notes tabs
+- Candidate profile and contact details
+- Fresher or experienced status
+- Verification status
+- HR decision
+- Resume preview or download fallback
+- Resume chat
+- Editable metadata
+- HR, technical, and final notes
 
 ### Recruiter Search
 
-Ask simple recruiter questions and get matching candidates:
+Ask simple questions instead of writing SQL:
 
 ```text
 Find Python developers in Bangalore
 Show verified freshers with React skills
 List experienced GIS candidates from Chennai
+Show candidates currently on hold
 Show the latest uploaded resumes
 ```
 
-Generated SQL is validated before execution, results are displayed in recruiter-friendly tables, and previous searches can be restored from history.
+The backend generates SQL, validates it, runs it safely, and returns recruiter-friendly results. Search history can be shown or hidden from the UI.
 
 ### Resume Chat
 
-Ask questions about a selected candidate:
+Ask questions about the selected candidate only:
 
-- "Summarize this resume"
-- "Show technical skills"
-- "What projects has this candidate worked on?"
-- "Does this candidate have professional experience?"
-- "Extract education details"
+```text
+Summarize this resume
+Show technical skills
+Extract contact details
+What projects has this candidate worked on?
+Does this candidate have professional experience?
+```
 
-The assistant answers using retrieved resume chunks and keeps chat history isolated per candidate.
+The chat uses stored chunks for that candidate, rebuilds FAISS for retrieval, and keeps history isolated per resume.
 
 ---
 
-## Current Capabilities
-
-### Resume Processing
-
-Supported formats:
-
-- PDF
-- DOCX
-
-Supported layouts:
-
-- ATS resumes
-- Multi-column resumes
-- Designer resumes
-- Academic resumes
-- Professional resumes
-- Scanned PDFs with OCR fallback
-
-Processing pipeline:
+## Processing Pipeline
 
 ```text
-Upload
-  -> Store on disk
-  -> Store resume blob in PostgreSQL
-  -> Extract text
-  -> Assess extraction quality
-  -> Extract metadata with local LLM
-  -> Validate metadata deterministically
+Resume upload
+  -> Validate file type
+  -> Store file on disk
+  -> Store file bytes in PostgreSQL
+  -> Extract text from PDF/DOCX
+  -> Use OCR fallback when needed
+  -> Extract metadata with local Ollama model
+  -> Clean and validate metadata deterministically
   -> Detect duplicates
-  -> Chunk resume by logical sections once per unique resume
-  -> Persist chunks
+  -> Create resume-aware chunks
+  -> Save chunks in PostgreSQL
   -> Build FAISS index for chat
+  -> Create or update candidate workspace
 ```
 
-After the first upload, the assistant reloads resume chunks from PostgreSQL and rebuilds FAISS from stored chunk content. It does not parse or rechunk the original resume again unless the file content changes or an administrator explicitly reprocesses it.
+When an existing resume workspace is opened later, the app loads chunks from PostgreSQL and rebuilds the FAISS index from stored chunk content. It skips PDF parsing and chunk generation when chunks already exist.
 
-### Metadata Extraction
+---
 
-Extracted fields include:
+## Extracted Candidate Data
 
-- Candidate name
-- Email
-- Phone number
-- Skills
-- Cities
-- Fresher status
-- HR decision
-- HR Notes
-- Technical Notes
-- Final Notes
-
-Recruiter-editable fields:
+The system extracts and stores:
 
 - Candidate name
 - Email
@@ -153,72 +128,75 @@ Recruiter-editable fields:
 - Skills
 - Cities
 - Fresher status
+- Verification status
+- Processing status
+- Extraction status
+- HR decision
 - HR Notes
 - Technical Notes
 - Final Notes
-- HR decision
-
-### Validation
-
-The system combines local LLM extraction with deterministic cleanup:
-
-- Rejects section headings as names
-- Filters organization names
-- Prevents email usernames from polluting candidate names
-- Validates email patterns
-- Normalizes phone numbers
-- Rejects dates and years as phone numbers
-- Preserves useful international phone formats
-- Separates internships from professional employment for fresher detection
-
-### Persistence
-
-PostgreSQL is the source of truth for:
-
-- Resume metadata
-- Uploaded resume blob
-- Stored file details
-- Recruiter notes
-- Verification state
-- HR decision
+- Uploaded file metadata
+- Resume blob
 - Resume chunks
-- Chat history
-- Search history
-- Session records
 
-Uploaded files are preserved both:
+Recruiters can edit:
 
-- On disk
-- In PostgreSQL as `BYTEA`
+- Candidate name
+- Email
+- Phone number
+- Skills
+- Cities
+- Fresher status
+- HR decision
+- HR Notes
+- Technical Notes
+- Final Notes
+
+Editing candidate metadata marks the resume as verified.
+
+---
+
+## Fresher Detection
+
+The fresher classifier is deterministic and explainable:
+
+- Fresher means no professional work experience.
+- Internships, apprenticeships, academic projects, workshops, certifications, and college projects do not make a candidate experienced.
+- Professional employment, contract work, consulting, freelance work, part-time work, or permanent roles make a candidate experienced.
+- The logic focuses on experience/employment sections instead of keyword scanning the whole resume.
 
 ---
 
 ## Architecture
 
 ```text
-React Recruiter Console
-        |
-        v
-FastAPI Routes
-        |
-        v
+React + Vite
+    |
+    v
+FastAPI
+    |
+    v
 Service Layer
-        |
-        v
-SQLAlchemy CRUD
-        |
-        v
+    |
+    v
+SQLAlchemy 2.0
+    |
+    v
 PostgreSQL
 
-Local AI Layer:
+Local AI:
 Ollama + Llama 3.2
 
-Retrieval Layer:
+Retrieval:
 Sentence Transformers + FAISS
 
-Document Layer:
-PyMuPDF + pdfplumber + pypdf + EasyOCR fallback
+Document Parsing:
+PyMuPDF + pdfplumber + pypdf + python-docx + EasyOCR fallback
 ```
+
+---
+
+## Tech Stack
 
 ### Backend
 
@@ -226,26 +204,20 @@ PyMuPDF + pdfplumber + pypdf + EasyOCR fallback
 - SQLAlchemy 2.0
 - Pydantic v2
 - PostgreSQL
-- Ollama integration
-- Resume parsing and chunking
-- FAISS retrieval
-- Recruiter SQL search
+- FAISS
+- Sentence Transformers
+- Ollama
+- PyMuPDF, pdfplumber, pypdf, python-docx
+- EasyOCR
 
 ### Frontend
 
-- React 18
+- React
 - Vite
+- TypeScript
 - Axios
 - Lucide icons
-- ATS-style recruiter interface
-
-### Local AI and Retrieval
-
-- Ollama
-- Llama 3.2
-- Sentence Transformers
-- all-MiniLM-L6-v2
-- FAISS
+- Custom ATS-style UI
 
 ---
 
@@ -283,130 +255,87 @@ PyMuPDF + pdfplumber + pypdf + EasyOCR fallback
 |-- bulk_process.py
 |-- pdf_processor.py
 |-- requirements.txt
-|-- roadmap.md
+|-- SETUP.md
 `-- README.md
 ```
 
 ---
 
-## Setup
+## Quick Start
 
-### 1. Clone
+For full installation and upgrade instructions, use [SETUP.md](SETUP.md).
 
-```bash
-git clone <repository-url>
-cd local-llm-document-assistant
-```
-
-### 2. Create Python Environment
-
-```bash
-python -m venv venv
-```
-
-Windows PowerShell:
+### 1. Install Python Dependencies
 
 ```powershell
+python -m venv venv
 .\venv\Scripts\Activate.ps1
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. Install Frontend Dependencies
+### 2. Install Frontend Dependencies
 
-```bash
+```powershell
 cd frontend
 npm install
 cd ..
 ```
 
-### 4. Configure PostgreSQL
+### 3. Configure PostgreSQL
 
-Create a database:
-
-```sql
-CREATE DATABASE resume_platform;
-```
-
-Create `.env` in the project root:
+Create a `.env` file in the project root:
 
 ```env
 DATABASE_URL=postgresql://postgres:<password>@localhost:5432/resume_platform
 ```
 
+Create the database if needed:
+
+```sql
+CREATE DATABASE resume_platform;
+```
+
 Initialize tables:
 
-```bash
+```powershell
 python database/init_db.py
 ```
 
-Apply migrations in order from `database/migrations/` if your database already exists or was created before the latest schema changes.
+Apply migrations in order from `database/migrations/` for existing databases.
 
-Current migration set includes support for:
+### 4. Start Ollama
 
-- Resume blob storage
-- Persistent sessions
-- One session per resume
-- Chat history
-- Recruiter search history
-- Resume chunks
-- HR decisions including On Hold
-- Split reviewer notes: HR Notes, Technical Notes, Final Notes
-
-For an existing database, apply every file in `database/migrations/` in order, including:
-
-```bash
-psql -U postgres -d resume_platform -f database/migrations/010_extend_reviewer_workflow.sql
-```
-
-### 5. Configure Ollama
-
-Install Ollama, then pull the local model:
-
-```bash
+```powershell
 ollama pull llama3.2:3b
-```
-
-Start Ollama:
-
-```bash
 ollama serve
 ```
 
----
+### 5. Run Backend
 
-## Running the App
-
-### Backend
-
-```bash
+```powershell
 uvicorn backend.main:app --reload
 ```
 
-Backend runs at:
+Backend:
 
 ```text
 http://localhost:8000
 ```
 
-Swagger docs:
+API docs:
 
 ```text
 http://localhost:8000/docs
 ```
 
-### Frontend
+### 6. Run Frontend
 
-```bash
+```powershell
 cd frontend
 npm run dev
 ```
 
-Frontend runs at:
+Frontend:
 
 ```text
 http://localhost:5173
@@ -414,32 +343,7 @@ http://localhost:5173
 
 ---
 
-## Bulk Resume Processing
-
-Use the bulk processor to scan a folder recursively and ingest resumes without the web UI.
-
-```bash
-python bulk_process.py "<folder_path>"
-```
-
-Example:
-
-```bash
-python bulk_process.py "D:\Resume_Dataset"
-```
-
-Outputs:
-
-| File | Purpose |
-| --- | --- |
-| `processing_report.csv` | Summary of processed resumes |
-| `bulk_processing.log` | Detailed processing and error logs |
-
-Bulk processing uses the same extraction, validation, duplicate detection, and persistence pipeline as the web app.
-
----
-
-## API Overview
+## API Highlights
 
 ### Resume Management
 
@@ -448,21 +352,21 @@ Bulk processing uses the same extraction, validation, duplicate detection, and p
 | `POST` | `/upload` | Upload one resume |
 | `POST` | `/upload-batch` | Upload multiple resumes |
 | `GET` | `/resumes` | List recruiter-facing resume records |
-| `GET` | `/resumes/{id}` | Get editable resume details |
+| `GET` | `/resumes/{id}` | Get editable resume metadata |
 | `PUT` | `/resumes/{id}` | Update editable metadata |
-| `DELETE` | `/resumes/{id}` | Delete database record |
-| `GET` | `/resumes/{id}/download` | Download stored resume |
+| `DELETE` | `/resumes/{id}` | Delete database record only |
+| `GET` | `/resumes/{id}/download` | Download resume from PostgreSQL blob |
 | `GET` | `/resumes/{id}/preview` | Preview resume inline |
-| `GET` | `/resumes/{id}/chunks` | Debug stored chunks |
+| `GET` | `/resumes/{id}/chunks` | Inspect stored chunks |
 
 ### Sessions and Chat
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| `GET` | `/sessions` | List resume workspaces |
-| `POST` | `/switch-session` | Activate a workspace |
+| `GET` | `/sessions` | List candidate workspaces |
+| `POST` | `/switch-session` | Open a workspace |
 | `GET` | `/sessions/{id}/resumes` | List resumes in a workspace |
-| `POST` | `/ask` | Ask questions about a resume |
+| `POST` | `/ask` | Ask questions about a selected resume |
 | `GET` | `/chat-history` | Load chat history |
 | `POST` | `/clear-chat` | Clear chat history |
 
@@ -470,72 +374,71 @@ Bulk processing uses the same extraction, validation, duplicate detection, and p
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| `POST` | `/search` | Run natural-language candidate search |
-| `GET` | `/search-history` | List previous searches |
-| `DELETE` | `/search-history` | Clear all search history |
-| `GET` | `/search-history/item/{id}` | Get one saved search |
-| `DELETE` | `/search-history/{id}` | Delete one saved search |
+| `POST` | `/search` | Search candidates with natural language |
+| `GET` | `/search-history` | View recent searches |
+| `DELETE` | `/search-history` | Clear search history |
+| `GET` | `/search-history/item/{id}` | Restore one search |
+| `DELETE` | `/search-history/{id}` | Delete one search |
 
 ---
 
-## Recruiter Workflow
+## Bulk Processing
 
-```text
-1. Upload resumes
-2. Review extracted candidate details
-3. Edit metadata if needed
-4. Open chat for a candidate
-5. Ask resume-specific questions
-6. Search the full database with recruiter questions
-7. Preview or download resumes
-8. Add HR, technical, and final notes
-9. Mark candidates as pending, on hold, accepted, or rejected
+Process a folder of resumes without the web UI:
+
+```powershell
+python bulk_process.py "D:\Resume_Dataset"
 ```
 
----
+Generated files:
 
-## Data Privacy
+| File | Purpose |
+| --- | --- |
+| `processing_report.csv` | Resume processing summary |
+| `bulk_processing.log` | Detailed logs and errors |
 
-The platform is designed for local and private operation:
-
-- Resume text is processed locally.
-- LLM calls use local Ollama models.
-- Candidate data is stored in your PostgreSQL database.
-- Uploaded files are stored locally and in PostgreSQL.
-- Resume chunks are stored in PostgreSQL and reused for later chat sessions.
-- No cloud LLM API is required.
+Bulk processing uses the same extraction, validation, duplicate detection, and database persistence pipeline as the web app.
 
 ---
 
-## Development Checks
+## Verification Commands
 
 Backend syntax check:
 
-```bash
+```powershell
 python -m py_compile backend/main.py backend/api/routes.py backend/routes/resume_routes.py
 ```
 
 Frontend production build:
 
-```bash
+```powershell
 cd frontend
 npm run build
 ```
 
 ---
 
-## Notes for Future Work
+## Privacy
 
-Strong next steps:
+This project is designed for local recruiter workflows:
+
+- Resume text is processed locally.
+- Ollama runs locally.
+- PostgreSQL stores candidate data locally.
+- Uploaded files remain on disk and in the local database.
+- No external LLM API is required.
+
+---
+
+## Future Improvements
 
 - Authentication and recruiter roles
-- Audit logs for metadata edits and decisions
+- Audit logs for metadata edits
 - Job description matching
 - Candidate ranking
-- Advanced filters
-- Deployment scripts
+- Exportable shortlists
 - Automated migration runner
-- Exportable recruiter shortlists
+- Deployment scripts
 
 ---
 
