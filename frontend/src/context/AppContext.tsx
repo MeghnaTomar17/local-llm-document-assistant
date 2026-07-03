@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { getApiError } from "../services/http";
 import { listResumes } from "../services/resumeApi";
-import { createSession, listSessionResumes, listSessions, switchSession, uploadResumes } from "../services/sessionApi";
+import { createSession, listSessionResumes, listSessions, switchSession, uploadResume } from "../services/sessionApi";
 import type { RecruiterSession, ResumeListItem, SessionsResponse, UUID, UploadResponse, UploadStatus } from "../types";
 
 interface AppContextValue {
@@ -125,32 +125,75 @@ export function AppProvider({ children }: { children: ReactNode }) {
       current: validFiles.length ? 1 : 0,
       currentFile: validFiles[0]?.name,
       step: "Uploading Resume...",
-      progress: validFiles.length > 1 ? 8 : null,
+      progress: 0,
     });
+
+    const reuseSelectedSession = Boolean(sessionId);
+    let targetSessionId = sessionId;
+    let latestResponse: UploadResponse | null = null;
+    let duplicateResponse: UploadResponse | null = null;
+    let uploadedCount = 0;
+    const uploadErrors: Array<{ file_name: string; error: string }> = [];
+    let timers: Array<ReturnType<typeof window.setTimeout>> = [];
+
     try {
-      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Extracting Metadata...", progress: 26 } : current), 500);
-      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Generating Resume Chunks...", progress: 48 } : current), 1300);
-      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Building Embeddings...", progress: 66 } : current), 2100);
-      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Saving to Database...", progress: 82 } : current), 2900);
-      window.setTimeout(() => setUploadStatus((current) => current.active ? { ...current, step: "Creating Recruiter Session...", progress: 92 } : current), 3600);
-      const response = await uploadResumes(validFiles, sessionId);
-      setUploadStatus((current) => ({ ...current, step: "Done", progress: 100 }));
-      if (response.duplicate) {
-        setDuplicateWarning(response);
-        return;
+      for (const [index, file] of validFiles.entries()) {
+        timers.forEach((timer) => window.clearTimeout(timer));
+        timers = scheduleUploadStages(index, validFiles.length, file.name, setUploadStatus);
+
+        try {
+          const response = await uploadResume(file, targetSessionId);
+          latestResponse = response;
+
+          if (response.duplicate) {
+            duplicateResponse = response;
+          } else {
+            uploadedCount += 1;
+            if (reuseSelectedSession) {
+              targetSessionId = response.session_id || response.active_session_id || targetSessionId;
+            }
+          }
+
+          if (response.errors?.length) {
+            uploadErrors.push(...response.errors);
+          }
+        } catch (err) {
+          uploadErrors.push({ file_name: file.name, error: getApiError(err) });
+        } finally {
+          timers.forEach((timer) => window.clearTimeout(timer));
+          timers = [];
+          setUploadStatus((current) => ({
+            ...current,
+            current: index + 1,
+            currentFile: file.name,
+            step: index + 1 === validFiles.length ? "Finishing Upload..." : "Resume Processed",
+            progress: Math.round(((index + 1) / validFiles.length) * 100),
+          }));
+        }
       }
-      const nextSessionId = response.session_id || response.active_session_id || sessionId || null;
+
+      const nextSessionId = reuseSelectedSession
+        ? targetSessionId || latestResponse?.session_id || latestResponse?.active_session_id || null
+        : latestResponse?.session_id || latestResponse?.active_session_id || null;
       setActiveSessionId(nextSessionId);
       await refresh();
-      const failed = response.errors?.length ? ` ${response.errors.length} file(s) failed.` : "";
+      if (duplicateResponse) {
+        setDuplicateWarning(duplicateResponse);
+      }
+      setUploadStatus((current) => ({ ...current, step: "Done", progress: 100 }));
+      const failed = uploadErrors.length ? ` ${uploadErrors.length} file(s) failed.` : "";
       const skippedText = skipped ? ` ${skipped} unsupported file(s) skipped.` : "";
-      setNotice(`${response.message || "Upload complete."}${skippedText}${failed}`);
-      if (response.errors?.length) {
-        setError(response.errors.map((item) => `${item.file_name}: ${item.error}`).join("\n"));
+      const uploadedText = validFiles.length > 1
+        ? `Processed ${uploadedCount} of ${validFiles.length} resume(s).`
+        : latestResponse?.message || "Upload complete.";
+      setNotice(`${uploadedText}${skippedText}${failed}`);
+      if (uploadErrors.length) {
+        setError(uploadErrors.map((item) => `${item.file_name}: ${item.error}`).join("\n"));
       }
     } catch (err) {
       setError(getApiError(err));
     } finally {
+      timers.forEach((timer) => window.clearTimeout(timer));
       setBusy(false);
       window.setTimeout(() => {
         setUploadStatus({ active: false, total: 0, current: 0, step: "", progress: null });
@@ -213,4 +256,33 @@ export function useAppData() {
 function firstSessionId(data: SessionsResponse): UUID | null {
   const first = data.sessions?.[0];
   return first?.session_id || first?.id || null;
+}
+
+function scheduleUploadStages(
+  index: number,
+  total: number,
+  fileName: string,
+  setUploadStatus: Dispatch<SetStateAction<UploadStatus>>,
+) {
+  const baseProgress = Math.round((index / total) * 100);
+  const progressSpan = 100 / total;
+  const stages = [
+    { delay: 0, step: "Uploading Resume...", progress: 8 },
+    { delay: 500, step: "Extracting Metadata...", progress: 26 },
+    { delay: 1300, step: "Generating Resume Chunks...", progress: 48 },
+    { delay: 2100, step: "Building Embeddings...", progress: 66 },
+    { delay: 2900, step: "Saving to Database...", progress: 82 },
+    { delay: 3600, step: "Creating Recruiter Session...", progress: 92 },
+  ];
+
+  return stages.map((stage) => window.setTimeout(() => {
+    setUploadStatus((current) => current.active ? {
+      ...current,
+      total,
+      current: index + 1,
+      currentFile: fileName,
+      step: stage.step,
+      progress: Math.min(99, Math.round(baseProgress + (progressSpan * stage.progress) / 100)),
+    } : current);
+  }, stage.delay));
 }

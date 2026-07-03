@@ -40,3 +40,14 @@ export async function uploadResumes(files: File[], sessionId?: UUID | null): Pro
   });
   return response.data;
 }
+
+export async function uploadResume(file: File, sessionId?: UUID | null): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (sessionId) formData.append("session_id", sessionId);
+
+  const response = await api.post<UploadResponse>("/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+}

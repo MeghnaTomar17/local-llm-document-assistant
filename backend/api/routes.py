@@ -35,7 +35,10 @@ async def save_upload_to_disk(file: UploadFile, file_path: Path) -> None:
 
 
 @router.post("/upload")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    session_id: str | None = Form(None),
+):
     extension = Path(file.filename or "").suffix.lower()
     if extension not in document_service.allowed_extensions:
         raise HTTPException(status_code=400, detail="Only PDF and DOCX resumes are supported.")
@@ -44,7 +47,7 @@ async def upload_document(file: UploadFile = File(...)):
     file_path = UPLOAD_DIR / f"{uuid.uuid4().hex}{extension}"
     await save_upload_to_disk(file, file_path)
     try:
-        session = document_service.add_document(file_path, display_name=file.filename)
+        session = document_service.add_document(file_path, display_name=file.filename, session_id=session_id)
     except DuplicateCandidateError as exc:
         return exc.payload
     except Exception as exc:
