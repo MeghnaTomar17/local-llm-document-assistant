@@ -15,6 +15,12 @@ No cloud LLM is required. Resume files, metadata, chunks, chat history, notes, a
 ## Why It Stands Out
 
 - Private local AI workflow using Ollama.
+- Dedicated local LLM routing:
+  - Llama 3.2 for resume extraction and candidate chat.
+  - Qwen2.5-Coder for natural language SQL generation.
+- Smart duplicate detection using resume hash and candidate identity.
+- Resume chunks are generated only once during upload and reused from PostgreSQL for all future chat sessions.
+- Resume preview directly inside the recruiter workspace.
 - Recruiter-friendly React interface with dashboard, sessions, resume workspace, and search.
 - PostgreSQL source of truth for resumes, metadata, file blobs, chunks, notes, decisions, sessions, and search history.
 - Uploaded resumes are stored both on disk and inside PostgreSQL as `BYTEA`.
@@ -184,16 +190,36 @@ SQLAlchemy 2.0
     v
 PostgreSQL
 
-Local AI:
-Ollama + Llama 3.2
+Local AI
 
-Retrieval:
-Sentence Transformers + FAISS
+Llama 3.2
+• Resume metadata extraction
+• Resume-aware chat (RAG)
+
+Qwen2.5-Coder
+• Natural language → SQL generation
+
+Retrieval
+
+Sentence Transformers
++
+FAISS
++
+Persistent Resume Chunks
 
 Document Parsing:
 PyMuPDF + pdfplumber + pypdf + python-docx + EasyOCR fallback
 ```
+## AI Models
 
+The application uses dedicated local models for different tasks.
+
+| Model | Purpose |
+|--------|----------|
+| Llama 3.2:3B | Resume metadata extraction, recruiter chat, resume summarization |
+| Qwen2.5-Coder:7B | Natural language to SQL generation for Recruiter Search |
+
+Both models run completely offline through Ollama.
 ---
 
 ## Tech Stack
@@ -287,6 +313,11 @@ Create a `.env` file in the project root:
 
 ```env
 DATABASE_URL=postgresql://postgres:<password>@localhost:5432/resume_platform
+OLLAMA_CHAT_MODEL=llama3.2:3b
+OLLAMA_SQL_MODEL=qwen2.5-coder:7b
+OLLAMA_MODEL=llama3.2:3b
+OLLAMA_METADATA_MODEL=llama3.2:3b
+OLLAMA_HOST=http://localhost:11434
 ```
 
 Create the database if needed:
@@ -307,6 +338,7 @@ Apply migrations in order from `database/migrations/` for existing databases.
 
 ```powershell
 ollama pull llama3.2:3b
+ollama pull qwen2.5-coder:7b
 ollama serve
 ```
 
@@ -340,7 +372,23 @@ Frontend:
 ```text
 http://localhost:5173
 ```
+## Daily Startup Checklist
 
+Before opening the application, ensure:
+
+✓ PostgreSQL is running
+
+✓ Ollama is running
+
+✓ Backend is running
+
+✓ Frontend is running
+
+Verify Ollama models:
+
+```powershell
+ollama list
+```
 ---
 
 ## API Highlights
@@ -415,8 +463,40 @@ Frontend production build:
 cd frontend
 npm run build
 ```
+## Database Overview
 
+The application uses PostgreSQL as the single source of truth.
+
+Core tables include:
+
+- resumes
+- recruiter_sessions
+- resume_chunks
+- workspace_chat_history
+- recruiter_search_history
+
+Each candidate has:
+
+- One persistent recruiter session
+- One editable workspace
+- One isolated chat history
+- One set of persistent resume chunks
 ---
+## Tested Environment
+
+Python 3.12
+
+Node.js 22.x
+
+npm 10.x
+
+PostgreSQL 18
+
+Ollama (latest stable)
+
+React + Vite
+
+FastAPI
 
 ## Privacy
 

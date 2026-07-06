@@ -5,10 +5,10 @@ This guide explains how to set up the current Resume Intelligence Assistant on a
 The app has three moving parts:
 
 ```text
-PostgreSQL -> stores resumes, chunks, sessions, chat, notes, and search history
-FastAPI    -> runs extraction, upload, chat, search, and resume APIs
-React      -> recruiter dashboard and workspace
-Ollama     -> local LLM used for metadata extraction and answers
+PostgreSQL -> stores resumes, resume blobs, chunks, sessions, chat history, recruiter notes, HR decisions, and recruiter search history
+FastAPI    -> runs extraction, upload, chat, recruiter search, preview, and resume APIs
+React      -> recruiter dashboard, sessions, resume workspace, and recruiter search
+Ollama     -> local AI models (Llama 3.2 + Qwen2.5-Coder)
 ```
 
 ---
@@ -98,6 +98,11 @@ Create a `.env` file in the project root:
 
 ```env
 DATABASE_URL=postgresql://postgres:<password>@localhost:5432/resume_platform
+OLLAMA_CHAT_MODEL=llama3.2:3b
+OLLAMA_SQL_MODEL=qwen2.5-coder:7b
+OLLAMA_MODEL=llama3.2:3b
+OLLAMA_METADATA_MODEL=llama3.2:3b
+OLLAMA_HOST=http://localhost:11434
 ```
 
 Replace `<password>` with the local PostgreSQL password.
@@ -176,6 +181,7 @@ Pull the model:
 
 ```powershell
 ollama pull llama3.2:3b
+ollama pull qwen2.5-coder:7b
 ```
 
 Start Ollama:
@@ -188,6 +194,14 @@ Keep this window open while using the app.
 
 If Ollama says it is already running, that is fine.
 
+> **Note**
+>
+> The application uses two dedicated local AI models:
+>
+> - **Llama 3.2:3B** for resume metadata extraction, candidate chat, and resume summarization.
+> - **Qwen2.5-Coder:7B** for natural language recruiter search (Text-to-SQL).
+>
+> Both models must be available in Ollama before starting the backend.
 ---
 
 ## 10. Start the Backend
@@ -255,6 +269,13 @@ Check these after setup:
 - Reopening a resume uses stored chunks instead of parsing the PDF again.
 - Recruiter Search returns candidate results.
 - Search history can be hidden or shown.
+- Resume Preview opens correctly.
+- Resume Download works.
+- Duplicate candidate detection prevents duplicate uploads.
+- Resume chunks are created only during the first upload.
+- Reopening an existing resume loads stored chunks from PostgreSQL.
+- Recruiter Search generates SQL using Qwen2.5-Coder.
+- Resume Chat uses Llama 3.2.
 
 ---
 
