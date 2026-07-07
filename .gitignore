@@ -113,3 +113,5 @@ training_data/
 roadmap.md
 
 processing_report.csv
+
+backend/preview_cache/

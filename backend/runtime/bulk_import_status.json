@@ -1,12 +1,12 @@
 {
   "running": false,
-  "processed": 2,
-  "total": 2,
+  "processed": 3,
+  "total": 3,
   "failed": 0,
   "current_file": "",
-  "last_completed_file": "Trupti Jadhav.pdf",
-  "message": "Bulk import finished. 2 of 2 resumes processed.",
-  "started_at": "2026-07-07T06:47:41.902824+00:00",
-  "updated_at": "2026-07-07T06:49:50.602480+00:00",
-  "finished_at": "2026-07-07T06:49:50.571550+00:00"
+  "last_completed_file": "Wasim Akram M_HMS_CV 2.docx",
+  "message": "Bulk import finished. 3 of 3 resumes processed.",
+  "started_at": "2026-07-07T07:53:33.193124+00:00",
+  "updated_at": "2026-07-07T07:57:03.527804+00:00",
+  "finished_at": "2026-07-07T07:57:03.517576+00:00"
 }

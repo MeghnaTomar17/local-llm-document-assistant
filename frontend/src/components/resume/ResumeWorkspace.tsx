@@ -50,6 +50,7 @@ export function ResumeWorkspace({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState("");
   const [preparingDownload, setPreparingDownload] = useState(false);
   const [error, setError] = useState("");
 
@@ -61,6 +62,14 @@ export function ResumeWorkspace({
       .catch((err) => setError(getApiError(err)))
       .finally(() => setLoadingChat(false));
   }, [resume.session_id, resume.id]);
+
+  useEffect(() => {
+    return () => {
+      if (previewSrc.startsWith("blob:")) {
+        URL.revokeObjectURL(previewSrc);
+      }
+    };
+  }, [previewSrc]);
 
   async function ask(text = question) {
     const trimmed = text.trim();
@@ -118,11 +127,7 @@ export function ResumeWorkspace({
           <button
             className="btn btn-secondary"
             type="button"
-            onClick={() => {
-              setPreviewOpen((current) => !current);
-              setPreviewFailed(false);
-              if (!previewOpen && isPdf(resume.mime_type || resume.original_file_name)) setPreviewLoading(true);
-            }}
+            onClick={handlePreviewToggle}
           >
             <Eye size={16} />
             <span>{previewOpen ? "Hide Preview" : "Preview"}</span>
@@ -171,22 +176,15 @@ export function ResumeWorkspace({
         </div>
       </div>
 
-      {isDocx(resume.mime_type || resume.original_file_name) && (
-        <div className="info-banner">
-          DOCX preview depends on browser support. Use Download if the preview opens blank.
-        </div>
-      )}
-
       {previewOpen && (
         <div className="resume-preview-panel">
-          {isPdf(resume.mime_type || resume.original_file_name) ? (
+          {canPreview(resume.mime_type || resume.original_file_name) ? (
             <>
               {previewLoading && <div className="preview-loading"><Loader label="Loading Resume Preview..." /></div>}
               {previewFailed ? (
                 <EmptyState
                   icon={<FileText size={24} />}
-                  title="Preview unavailable."
-                  description="You can still download the resume."
+                  title="Preview is unavailable for this document. You can still download the original file."
                   action={(
                     <a className="btn btn-secondary" href={getResumeDownloadUrl(resume.id)} target="_blank" rel="noreferrer">
                       <Download size={16} />
@@ -194,23 +192,23 @@ export function ResumeWorkspace({
                     </a>
                   )}
                 />
-              ) : (
+              ) : previewSrc ? (
                 <iframe
                   title="Resume preview"
-                  src={getResumePreviewUrl(resume.id)}
+                  src={previewSrc}
                   onLoad={() => setPreviewLoading(false)}
                   onError={() => {
                     setPreviewLoading(false);
                     setPreviewFailed(true);
                   }}
                 />
-              )}
+              ) : null}
             </>
           ) : (
             <EmptyState
               icon={<FileText size={24} />}
               title="Preview is not available for this file type."
-              description="DOCX preview support depends on the browser. Download the resume to view it locally."
+              description="You can still download the original file."
               action={(
                 <a className="btn btn-secondary" href={getResumeDownloadUrl(resume.id)} target="_blank" rel="noreferrer">
                   <Download size={16} />
@@ -279,6 +277,40 @@ export function ResumeWorkspace({
       setSavingDecision(false);
     }
   }
+
+  async function handlePreviewToggle() {
+    if (previewOpen) {
+      setPreviewOpen(false);
+      setPreviewFailed(false);
+      setPreviewLoading(false);
+      setPreviewSrc("");
+      return;
+    }
+
+    const fileType = resume.mime_type || resume.original_file_name;
+    setPreviewOpen(true);
+    setPreviewFailed(false);
+
+    if (!canPreview(fileType)) {
+      setPreviewLoading(false);
+      return;
+    }
+
+    setPreviewLoading(true);
+    const previewUrl = getResumePreviewUrl(resume.id);
+
+    // Fetch the preview as a blob and use an object URL for the iframe.
+    // This avoids browser-level PDF handlers prompting to download.
+    try {
+      const response = await fetch(previewUrl);
+      if (!response.ok) throw new Error("Preview unavailable");
+      const blob = await response.blob();
+      setPreviewSrc(URL.createObjectURL(blob));
+    } catch {
+      setPreviewFailed(true);
+      setPreviewLoading(false);
+    }
+  }
 }
 
 function DecisionBadge({ decision }: { decision?: HRDecision | null }) {
@@ -304,6 +336,10 @@ function isDocx(value?: string | null) {
 function isPdf(value?: string | null) {
   const text = String(value || "").toLowerCase();
   return text.includes("pdf") || text.endsWith(".pdf");
+}
+
+function canPreview(value?: string | null) {
+  return isPdf(value) || isDocx(value);
 }
 
 function TabIcon({ tab }: { tab: TabKey }) {

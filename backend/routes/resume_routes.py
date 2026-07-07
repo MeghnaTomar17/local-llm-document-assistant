@@ -16,6 +16,12 @@ from backend.services.resume_service import (
     list_resume_response,
     update_resume_response,
 )
+from backend.services.preview_service import (
+    PreviewConversionError,
+    get_docx_preview_pdf,
+    is_docx_file,
+    is_pdf_file,
+)
 
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
@@ -94,18 +100,49 @@ def preview_resume(resume_id: UUID) -> StreamingResponse:
             detail="Resume file content was not found in the database.",
         )
 
-    safe_file_name = quote(original_file_name or "resume", safe="")
-    headers = {
-        "Content-Disposition": (
-            f"inline; filename*=UTF-8''{safe_file_name}"
-        )
-    }
+    if is_docx_file(original_file_name, mime_type):
+        try:
+            preview_blob = get_docx_preview_pdf(resume_id, original_file_name, resume_blob)
+        except PreviewConversionError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Preview is unavailable for this document. You can still download the original file.",
+            ) from exc
 
+        preview_file_name = f"{(original_file_name or 'resume').rsplit('.', 1)[0]}.pdf"
+        headers = inline_pdf_headers(preview_file_name)
+        headers["Content-Length"] = str(len(preview_blob))
+        return StreamingResponse(
+            BytesIO(preview_blob),
+            media_type="application/pdf",
+            headers=headers,
+        )
+
+    if not is_pdf_file(original_file_name, mime_type):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Preview is unavailable for this document. You can still download the original file.",
+        )
+
+    # Ensure Content-Length is set so browsers can render PDFs inline reliably
+    headers = inline_pdf_headers(original_file_name or "resume.pdf")
+    headers["Content-Length"] = str(len(resume_blob))
     return StreamingResponse(
         BytesIO(resume_blob),
-        media_type=mime_type or "application/octet-stream",
+        media_type="application/pdf",
         headers=headers,
     )
+
+
+def inline_pdf_headers(file_name: str) -> dict[str, str]:
+    # Avoid forcing a download by keeping Content-Disposition simple and
+    # provide Accept-Ranges so PDF viewers can request byte ranges.
+    return {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": "inline",
+        "Accept-Ranges": "bytes",
+        "X-Content-Type-Options": "nosniff",
+    }
 
 
 @router.get("/{resume_id}/chunks", response_model=list[ResumeChunkResponse])
