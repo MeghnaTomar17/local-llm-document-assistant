@@ -25,7 +25,7 @@ class SQLGeneratorConfig:
 
     model: str
     ollama_url: str = "http://localhost:11434/api/generate"
-    timeout_seconds: float = 120.0
+    timeout_seconds: float = 600.0
     schema_context_path: Path = Path(__file__).resolve().parents[1] / "prompts" / "schema_context.txt"
     prompt_template_path: Path = Path(__file__).resolve().parents[1] / "prompts" / "sql_prompt.txt"
 
@@ -38,7 +38,7 @@ class SQLGeneratorConfig:
         return cls(
             model=model,
             ollama_url=os.getenv("OLLAMA_URL", cls.ollama_url),
-            timeout_seconds=float(os.getenv("OLLAMA_SQL_TIMEOUT_SECONDS", "120")),
+            timeout_seconds=float(os.getenv("OLLAMA_SQL_TIMEOUT_SECONDS", "600")),
             schema_context_path=Path(
                 os.getenv("OLLAMA_SQL_SCHEMA_CONTEXT_PATH", str(cls.schema_context_path))
             ),
