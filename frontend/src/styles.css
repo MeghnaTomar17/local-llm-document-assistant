@@ -266,18 +266,6 @@ button:disabled {
   gap: 10px;
 }
 
-.session-main-panel .upload-zone {
-  min-height: 58px;
-  padding: 8px 12px;
-  grid-auto-flow: column;
-  justify-content: center;
-}
-
-.session-main-panel .upload-zone svg {
-  width: 22px;
-  height: 22px;
-}
-
 .active-resume-table {
   min-width: 0;
   overflow: visible;
@@ -559,6 +547,18 @@ button:disabled {
   min-height: 100vh;
   flex-direction: column;
   padding: 24px;
+}
+
+.page-loading-state {
+  min-height: calc(100vh - 120px);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 18px;
+}
+
+.page-loading-state .session-list {
+  width: min(520px, 100%);
 }
 
 .loader span {
@@ -935,46 +935,104 @@ textarea {
   gap: 6px;
 }
 
-.upload-zone {
-  min-height: 138px;
-  border: 1px dashed #9aa9b8;
+.import-status-panel {
+  border: 1px solid #dbe2ea;
   border-radius: 8px;
-  background: #fbfcfd;
+  background: #ffffff;
   display: grid;
-  place-items: center;
-  align-content: center;
+  gap: 10px;
+  padding: 14px;
+}
+
+.import-status-panel .section-title h3 {
+  display: inline-flex;
+  align-items: center;
   gap: 7px;
-  transition: border-color 220ms ease, background 220ms ease;
 }
 
-.upload-zone.is-dragging {
-  border-color: #176b6a;
-  background: #eef6f6;
-}
-
-.upload-zone[aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.82;
-}
-
-.upload-zone input {
-  display: none;
-}
-
-.upload-zone span {
+.import-status-panel small,
+.import-progress-grid span {
   color: #647184;
-  font-size: 0.86rem;
+  font-size: 0.83rem;
 }
 
-.upload-progress {
-  width: min(420px, 90%);
+.import-status-idle {
+  gap: 12px;
+}
+
+.import-status-idle .section-title {
+  align-items: flex-start;
+}
+
+.import-idle-meta {
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+  background: #f8fafc;
   display: grid;
-  gap: 6px;
-  text-align: center;
+  gap: 2px;
+  padding: 8px 10px;
 }
 
-.upload-progress small {
+.import-idle-meta span {
   color: #647184;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.import-idle-meta strong {
+  color: #314052;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.import-progress-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.45fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.import-progress-grid > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.import-current-file strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-runtime-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.workspace-restore-state {
+  display: grid;
+  gap: 12px;
+}
+
+.restore-steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.restore-steps span {
+  border: 1px solid #cfe0dd;
+  border-radius: 999px;
+  background: #f1f8f7;
+  color: #245f5e;
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .sql-panel {

@@ -4,6 +4,7 @@ import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from backend.services.bulk_status import read_bulk_status
 from backend.services.document_service import document_service
 from backend.services.resume_service import DuplicateCandidateError
 
@@ -162,6 +163,11 @@ async def ask_question(payload: dict):
 @router.get("/stats")
 def stats(session_id: str | None = None, resume_id: str | None = None):
     return document_service.stats(session_id=session_id, resume_id=resume_id)
+
+
+@router.get("/bulk-import/status")
+def bulk_import_status():
+    return read_bulk_status()
 
 
 @router.get("/chat-history")

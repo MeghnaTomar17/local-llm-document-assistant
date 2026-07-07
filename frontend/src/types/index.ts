@@ -128,25 +128,15 @@ export interface ChatMessage {
   prompt_size?: number;
 }
 
-export interface UploadResponse {
-  message?: string;
-  session_id?: UUID | null;
-  active_session_id?: UUID | null;
-  sessions?: RecruiterSession[];
-  errors?: Array<{ file_name: string; error: string }>;
-  metadata?: unknown;
-  duplicate?: boolean;
-  candidate_name?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  existing_resume_id?: UUID;
-}
-
-export interface UploadStatus {
-  active: boolean;
+export interface BulkImportStatus {
+  running: boolean;
+  processed: number;
   total: number;
-  current: number;
-  currentFile?: string;
-  step: string;
-  progress?: number | null;
+  failed: number;
+  current_file?: string | null;
+  last_completed_file?: string | null;
+  message?: string | null;
+  started_at?: string | null;
+  updated_at?: string | null;
+  finished_at?: string | null;
 }

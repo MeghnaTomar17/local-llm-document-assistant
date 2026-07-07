@@ -8,6 +8,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
+from backend.services.bulk_status import finish_bulk_import, start_bulk_import, update_bulk_progress
 from backend.services.document_service import document_service
 
 
@@ -125,6 +126,7 @@ def process_resumes(resumes, session_id=None, group_session=False):
     failed = 0
 
     overall_start = time.time()
+    start_bulk_import(total)
     if group_session and session_id:
         active_session_id = session_id
     elif group_session:
@@ -146,6 +148,13 @@ def process_resumes(resumes, session_id=None, group_session=False):
     ):
 
         start = time.time()
+        update_bulk_progress(
+            processed=processed + failed,
+            total=total,
+            failed=failed,
+            current_file=resume.name,
+            message=f"Processing {resume.name}",
+        )
 
         try:
 
@@ -176,6 +185,14 @@ def process_resumes(resumes, session_id=None, group_session=False):
                 resume.name,
                 resume_id,
             )
+            update_bulk_progress(
+                processed=processed + failed,
+                total=total,
+                failed=failed,
+                current_file="",
+                last_completed_file=resume.name,
+                message=f"Processed {resume.name}",
+            )
 
         except Exception as e:
 
@@ -194,6 +211,14 @@ def process_resumes(resumes, session_id=None, group_session=False):
             logger.exception(
                 "Failed processing %s",
                 resume.name,
+            )
+            update_bulk_progress(
+                processed=processed + failed,
+                total=total,
+                failed=failed,
+                current_file="",
+                last_completed_file=resume.name,
+                message=f"Failed {resume.name}",
             )
 
     total_time = time.time() - overall_start
@@ -216,6 +241,7 @@ def process_resumes(resumes, session_id=None, group_session=False):
     print(f"\nCSV Report : {REPORT_FILE}")
     print(f"Log File   : {LOG_FILE}")
     print(f"Session    : {active_session_id if active_session_id else 'one per unique resume'}")
+    finish_bulk_import(processed=processed + failed, total=total, failed=failed)
 
 
 def datetime_label():
