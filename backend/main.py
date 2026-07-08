@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.routes import router
 from backend.llm_sql.routes import router as recruiter_search_router
+from backend.llm_sql.services.recruiter_search_service import warm_recruiter_search_service
 from backend.routes.resume_routes import router as resume_router
 
 
@@ -20,6 +21,11 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(resume_router)
 app.include_router(recruiter_search_router)
+
+
+@app.on_event("startup")
+def startup_recruiter_search() -> None:
+    warm_recruiter_search_service()
 
 
 @app.get("/")

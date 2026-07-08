@@ -1,0 +1,1297 @@
+{
+  "categories": {
+    "programming_languages": [
+      {
+        "name": "Python",
+        "aliases": [
+          "Python",
+          "Python3",
+          "Python2"
+        ]
+      },
+      {
+        "name": "Java",
+        "aliases": [
+          "Java",
+          "Java 8",
+          "Java 11",
+          "Java 17"
+        ]
+      },
+      {
+        "name": "C",
+        "aliases": [
+          "C"
+        ]
+      },
+      {
+        "name": "C++",
+        "aliases": [
+          "C++",
+          "Cpp"
+        ]
+      },
+      {
+        "name": "C#",
+        "aliases": [
+          "C#",
+          "C-Sharp",
+          "CSharp"
+        ]
+      },
+      {
+        "name": "Go",
+        "aliases": [
+          "Go",
+          "Golang"
+        ]
+      },
+      {
+        "name": "Rust",
+        "aliases": [
+          "Rust",
+          "Rustlang"
+        ]
+      },
+      {
+        "name": "JavaScript",
+        "aliases": [
+          "JavaScript",
+          "JS",
+          "Javascript"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "aliases": [
+          "TypeScript",
+          "TS",
+          "Typescript"
+        ]
+      },
+      {
+        "name": "PHP",
+        "aliases": [
+          "PHP",
+          "PHP7",
+          "PHP8"
+        ]
+      },
+      {
+        "name": "Ruby",
+        "aliases": [
+          "Ruby"
+        ]
+      },
+      {
+        "name": "Swift",
+        "aliases": [
+          "Swift"
+        ]
+      },
+      {
+        "name": "Kotlin",
+        "aliases": [
+          "Kotlin"
+        ]
+      },
+      {
+        "name": "Scala",
+        "aliases": [
+          "Scala"
+        ]
+      },
+      {
+        "name": "R Language",
+        "aliases": [
+          "R",
+          "R-lang",
+          "R Programming"
+        ]
+      },
+      {
+        "name": "MATLAB",
+        "aliases": [
+          "MATLAB",
+          "Matlab"
+        ]
+      },
+      {
+        "name": "Julia",
+        "aliases": [
+          "Julia"
+        ]
+      },
+      {
+        "name": "Dart",
+        "aliases": [
+          "Dart"
+        ]
+      },
+      {
+        "name": "SQL",
+        "aliases": [
+          "SQL",
+          "Structured Query Language"
+        ]
+      },
+      {
+        "name": "PL/SQL",
+        "aliases": [
+          "PL/SQL",
+          "PLSQL"
+        ]
+      },
+      {
+        "name": "T-SQL",
+        "aliases": [
+          "T-SQL",
+          "TSQL"
+        ]
+      },
+      {
+        "name": "HTML",
+        "aliases": [
+          "HTML",
+          "HTML5"
+        ]
+      },
+      {
+        "name": "CSS",
+        "aliases": [
+          "CSS",
+          "CSS3"
+        ]
+      },
+      {
+        "name": "Bash",
+        "aliases": [
+          "Bash",
+          "Bash scripting"
+        ]
+      },
+      {
+        "name": "PowerShell",
+        "aliases": [
+          "PowerShell",
+          "Powershell"
+        ]
+      },
+      {
+        "name": "Shell Scripting",
+        "aliases": [
+          "Shell",
+          "Shell Script"
+        ]
+      },
+      {
+        "name": "Perl",
+        "aliases": [
+          "Perl"
+        ]
+      }
+    ],
+    "frontend": [
+      {
+        "name": "React",
+        "aliases": [
+          "React",
+          "React.js",
+          "ReactJS"
+        ]
+      },
+      {
+        "name": "Angular",
+        "aliases": [
+          "Angular",
+          "AngularJS",
+          "Angular2+"
+        ]
+      },
+      {
+        "name": "Vue.js",
+        "aliases": [
+          "Vue.js",
+          "Vue",
+          "VueJS"
+        ]
+      },
+      {
+        "name": "Next.js",
+        "aliases": [
+          "Next.js",
+          "NextJS",
+          "Next"
+        ]
+      },
+      {
+        "name": "Nuxt.js",
+        "aliases": [
+          "Nuxt.js",
+          "NuxtJS",
+          "Nuxt"
+        ]
+      },
+      {
+        "name": "Tailwind CSS",
+        "aliases": [
+          "Tailwind CSS",
+          "Tailwind",
+          "TailwindCSS"
+        ]
+      },
+      {
+        "name": "Bootstrap",
+        "aliases": [
+          "Bootstrap",
+          "Bootstrap4",
+          "Bootstrap5"
+        ]
+      },
+      {
+        "name": "Material UI",
+        "aliases": [
+          "Material UI",
+          "MUI",
+          "MaterialUI"
+        ]
+      },
+      {
+        "name": "SASS",
+        "aliases": [
+          "SASS",
+          "Sass",
+          "SCSS"
+        ]
+      },
+      {
+        "name": "LESS",
+        "aliases": [
+          "LESS",
+          "Less"
+        ]
+      },
+      {
+        "name": "Redux",
+        "aliases": [
+          "Redux",
+          "Redux-Toolkit",
+          "Redux Toolkit"
+        ]
+      },
+      {
+        "name": "Webpack",
+        "aliases": [
+          "Webpack",
+          "webpack"
+        ]
+      },
+      {
+        "name": "Babel",
+        "aliases": [
+          "Babel",
+          "babel"
+        ]
+      },
+      {
+        "name": "Vite",
+        "aliases": [
+          "Vite",
+          "vite"
+        ]
+      },
+      {
+        "name": "jQuery",
+        "aliases": [
+          "jQuery",
+          "JQuery"
+        ]
+      }
+    ],
+    "backend": [
+      {
+        "name": "Node.js",
+        "aliases": [
+          "Node.js",
+          "NodeJS",
+          "Node"
+        ]
+      },
+      {
+        "name": "Express.js",
+        "aliases": [
+          "Express.js",
+          "ExpressJS",
+          "Express"
+        ]
+      },
+      {
+        "name": "FastAPI",
+        "aliases": [
+          "FastAPI",
+          "Fast API"
+        ]
+      },
+      {
+        "name": "Flask",
+        "aliases": [
+          "Flask"
+        ]
+      },
+      {
+        "name": "Django",
+        "aliases": [
+          "Django"
+        ]
+      },
+      {
+        "name": "Spring Boot",
+        "aliases": [
+          "Spring Boot",
+          "SpringBoot",
+          "Spring Framework"
+        ]
+      },
+      {
+        "name": "ASP.NET",
+        "aliases": [
+          "ASP.NET",
+          "ASP.NET Core",
+          "NET Core",
+          "C# .NET"
+        ]
+      },
+      {
+        "name": "Laravel",
+        "aliases": [
+          "Laravel"
+        ]
+      },
+      {
+        "name": "NestJS",
+        "aliases": [
+          "NestJS",
+          "Nest"
+        ]
+      },
+      {
+        "name": "Ruby on Rails",
+        "aliases": [
+          "Ruby on Rails",
+          "Rails",
+          "RoR"
+        ]
+      },
+      {
+        "name": "Koa",
+        "aliases": [
+          "Koa",
+          "KoaJS"
+        ]
+      },
+      {
+        "name": "Gin",
+        "aliases": [
+          "Gin",
+          "Gin Gonic"
+        ]
+      },
+      {
+        "name": "Symfony",
+        "aliases": [
+          "Symfony"
+        ]
+      }
+    ],
+    "databases": [
+      {
+        "name": "PostgreSQL",
+        "aliases": [
+          "PostgreSQL",
+          "Postgres",
+          "Postgresql"
+        ]
+      },
+      {
+        "name": "MySQL",
+        "aliases": [
+          "MySQL",
+          "Mysql"
+        ]
+      },
+      {
+        "name": "MongoDB",
+        "aliases": [
+          "MongoDB",
+          "Mongo",
+          "Mongodb"
+        ]
+      },
+      {
+        "name": "SQLite",
+        "aliases": [
+          "SQLite",
+          "Sqlite"
+        ]
+      },
+      {
+        "name": "Redis",
+        "aliases": [
+          "Redis"
+        ]
+      },
+      {
+        "name": "Elasticsearch",
+        "aliases": [
+          "Elasticsearch",
+          "Elastic Search"
+        ]
+      },
+      {
+        "name": "Cassandra",
+        "aliases": [
+          "Cassandra",
+          "Apache Cassandra"
+        ]
+      },
+      {
+        "name": "Neo4j",
+        "aliases": [
+          "Neo4j"
+        ]
+      },
+      {
+        "name": "Oracle Database",
+        "aliases": [
+          "Oracle Database",
+          "Oracle",
+          "OracleDB"
+        ]
+      },
+      {
+        "name": "SQL Server",
+        "aliases": [
+          "SQL Server",
+          "Microsoft SQL Server",
+          "MSSQL"
+        ]
+      },
+      {
+        "name": "DynamoDB",
+        "aliases": [
+          "DynamoDB",
+          "AWS DynamoDB"
+        ]
+      },
+      {
+        "name": "MariaDB",
+        "aliases": [
+          "MariaDB",
+          "Mariadb"
+        ]
+      },
+      {
+        "name": "CouchDB",
+        "aliases": [
+          "CouchDB"
+        ]
+      }
+    ],
+    "cloud": [
+      {
+        "name": "AWS",
+        "aliases": [
+          "AWS",
+          "Amazon Web Services",
+          "Amazon S3",
+          "EC2",
+          "RDS",
+          "Lambda"
+        ]
+      },
+      {
+        "name": "Azure",
+        "aliases": [
+          "Azure",
+          "Microsoft Azure"
+        ]
+      },
+      {
+        "name": "Google Cloud Platform",
+        "aliases": [
+          "Google Cloud Platform",
+          "GCP",
+          "Google Cloud",
+          "BigQuery"
+        ]
+      },
+      {
+        "name": "Firebase",
+        "aliases": [
+          "Firebase"
+        ]
+      },
+      {
+        "name": "Supabase",
+        "aliases": [
+          "Supabase"
+        ]
+      },
+      {
+        "name": "DigitalOcean",
+        "aliases": [
+          "DigitalOcean",
+          "Digital Ocean"
+        ]
+      },
+      {
+        "name": "Heroku",
+        "aliases": [
+          "Heroku"
+        ]
+      },
+      {
+        "name": "OpenStack",
+        "aliases": [
+          "OpenStack"
+        ]
+      },
+      {
+        "name": "Cloudflare",
+        "aliases": [
+          "Cloudflare"
+        ]
+      }
+    ],
+    "devops": [
+      {
+        "name": "Docker",
+        "aliases": [
+          "Docker",
+          "docker"
+        ]
+      },
+      {
+        "name": "Kubernetes",
+        "aliases": [
+          "Kubernetes",
+          "K8s",
+          "k8s"
+        ]
+      },
+      {
+        "name": "Jenkins",
+        "aliases": [
+          "Jenkins"
+        ]
+      },
+      {
+        "name": "GitHub Actions",
+        "aliases": [
+          "GitHub Actions",
+          "Github Actions"
+        ]
+      },
+      {
+        "name": "GitLab CI",
+        "aliases": [
+          "GitLab CI",
+          "Gitlab CI",
+          "GitLab CI/CD"
+        ]
+      },
+      {
+        "name": "Terraform",
+        "aliases": [
+          "Terraform"
+        ]
+      },
+      {
+        "name": "Ansible",
+        "aliases": [
+          "Ansible"
+        ]
+      },
+      {
+        "name": "Helm",
+        "aliases": [
+          "Helm",
+          "helm"
+        ]
+      },
+      {
+        "name": "Prometheus",
+        "aliases": [
+          "Prometheus"
+        ]
+      },
+      {
+        "name": "Grafana",
+        "aliases": [
+          "Grafana"
+        ]
+      },
+      {
+        "name": "CircleCI",
+        "aliases": [
+          "CircleCI",
+          "Circle CI"
+        ]
+      },
+      {
+        "name": "Nginx",
+        "aliases": [
+          "Nginx",
+          "nginx"
+        ]
+      },
+      {
+        "name": "Apache",
+        "aliases": [
+          "Apache",
+          "Apache HTTP Server"
+        ]
+      }
+    ],
+    "ai_ml": [
+      {
+        "name": "TensorFlow",
+        "aliases": [
+          "TensorFlow",
+          "Tensorflow"
+        ]
+      },
+      {
+        "name": "PyTorch",
+        "aliases": [
+          "PyTorch",
+          "Pytorch"
+        ]
+      },
+      {
+        "name": "Scikit-learn",
+        "aliases": [
+          "Scikit-learn",
+          "Scikit learn",
+          "Sklearn"
+        ]
+      },
+      {
+        "name": "Keras",
+        "aliases": [
+          "Keras"
+        ]
+      },
+      {
+        "name": "Hugging Face Transformers",
+        "aliases": [
+          "Hugging Face Transformers",
+          "HuggingFace",
+          "Transformers"
+        ]
+      },
+      {
+        "name": "OpenCV",
+        "aliases": [
+          "OpenCV",
+          "Open CV"
+        ]
+      },
+      {
+        "name": "spaCy",
+        "aliases": [
+          "spaCy",
+          "spacy"
+        ]
+      },
+      {
+        "name": "LangChain",
+        "aliases": [
+          "LangChain",
+          "Langchain"
+        ]
+      },
+      {
+        "name": "FAISS",
+        "aliases": [
+          "FAISS",
+          "Faiss"
+        ]
+      },
+      {
+        "name": "Sentence Transformers",
+        "aliases": [
+          "Sentence Transformers",
+          "SentenceTransformers"
+        ]
+      },
+      {
+        "name": "XGBoost",
+        "aliases": [
+          "XGBoost",
+          "Xgboost"
+        ]
+      },
+      {
+        "name": "LightGBM",
+        "aliases": [
+          "LightGBM"
+        ]
+      },
+      {
+        "name": "CatBoost",
+        "aliases": [
+          "CatBoost"
+        ]
+      },
+      {
+        "name": "Deep Learning",
+        "aliases": [
+          "Deep Learning",
+          "DL"
+        ]
+      },
+      {
+        "name": "Machine Learning",
+        "aliases": [
+          "Machine Learning",
+          "ML"
+        ]
+      },
+      {
+        "name": "Neural Networks",
+        "aliases": [
+          "Neural Networks",
+          "Neural Network",
+          "ANN",
+          "CNN",
+          "RNN",
+          "LSTM"
+        ]
+      },
+      {
+        "name": "Computer Vision",
+        "aliases": [
+          "Computer Vision",
+          "CV"
+        ]
+      },
+      {
+        "name": "Natural Language Processing",
+        "aliases": [
+          "Natural Language Processing",
+          "NLP"
+        ]
+      },
+      {
+        "name": "Generative AI",
+        "aliases": [
+          "Generative AI",
+          "GenAI",
+          "LLMs",
+          "LLM",
+          "GPT"
+        ]
+      }
+    ],
+    "data_science": [
+      {
+        "name": "NumPy",
+        "aliases": [
+          "NumPy",
+          "Numpy"
+        ]
+      },
+      {
+        "name": "Pandas",
+        "aliases": [
+          "Pandas"
+        ]
+      },
+      {
+        "name": "Matplotlib",
+        "aliases": [
+          "Matplotlib"
+        ]
+      },
+      {
+        "name": "Plotly",
+        "aliases": [
+          "Plotly"
+        ]
+      },
+      {
+        "name": "Seaborn",
+        "aliases": [
+          "Seaborn"
+        ]
+      },
+      {
+        "name": "SciPy",
+        "aliases": [
+          "SciPy",
+          "Scipy"
+        ]
+      },
+      {
+        "name": "Jupyter",
+        "aliases": [
+          "Jupyter",
+          "Jupyter Notebook",
+          "JupyterLab"
+        ]
+      },
+      {
+        "name": "Anaconda",
+        "aliases": [
+          "Anaconda"
+        ]
+      },
+      {
+        "name": "RStudio",
+        "aliases": [
+          "RStudio",
+          "R Studio"
+        ]
+      },
+      {
+        "name": "SPSS",
+        "aliases": [
+          "SPSS"
+        ]
+      },
+      {
+        "name": "SAS",
+        "aliases": [
+          "SAS"
+        ]
+      },
+      {
+        "name": "Statistical Analysis",
+        "aliases": [
+          "Statistical Analysis",
+          "Statistics"
+        ]
+      },
+      {
+        "name": "Data Visualization",
+        "aliases": [
+          "Data Visualization",
+          "Data Viz"
+        ]
+      }
+    ],
+    "data_engineering": [
+      {
+        "name": "Apache Spark",
+        "aliases": [
+          "Apache Spark",
+          "Spark",
+          "PySpark",
+          "Pyspark"
+        ]
+      },
+      {
+        "name": "Hadoop",
+        "aliases": [
+          "Hadoop",
+          "Apache Hadoop",
+          "MapReduce"
+        ]
+      },
+      {
+        "name": "Kafka",
+        "aliases": [
+          "Kafka",
+          "Apache Kafka"
+        ]
+      },
+      {
+        "name": "Airflow",
+        "aliases": [
+          "Airflow",
+          "Apache Airflow"
+        ]
+      },
+      {
+        "name": "dbt",
+        "aliases": [
+          "dbt",
+          "DBT"
+        ]
+      },
+      {
+        "name": "Snowflake",
+        "aliases": [
+          "Snowflake"
+        ]
+      },
+      {
+        "name": "Databricks",
+        "aliases": [
+          "Databricks"
+        ]
+      },
+      {
+        "name": "BigQuery",
+        "aliases": [
+          "BigQuery",
+          "Google BigQuery"
+        ]
+      },
+      {
+        "name": "Redshift",
+        "aliases": [
+          "Redshift",
+          "AWS Redshift"
+        ]
+      },
+      {
+        "name": "Glue",
+        "aliases": [
+          "Glue",
+          "AWS Glue"
+        ]
+      },
+      {
+        "name": "ETL",
+        "aliases": [
+          "ETL",
+          "Extract Transform Load",
+          "Data Pipeline"
+        ]
+      },
+      {
+        "name": "Data Warehousing",
+        "aliases": [
+          "Data Warehousing",
+          "Data Warehouse"
+        ]
+      }
+    ],
+    "cybersecurity": [
+      {
+        "name": "Burp Suite",
+        "aliases": [
+          "Burp Suite",
+          "BurpSuite"
+        ]
+      },
+      {
+        "name": "Metasploit",
+        "aliases": [
+          "Metasploit"
+        ]
+      },
+      {
+        "name": "Wireshark",
+        "aliases": [
+          "Wireshark"
+        ]
+      },
+      {
+        "name": "Nmap",
+        "aliases": [
+          "Nmap"
+        ]
+      },
+      {
+        "name": "OWASP",
+        "aliases": [
+          "OWASP",
+          "OWASP Top 10"
+        ]
+      },
+      {
+        "name": "SIEM",
+        "aliases": [
+          "SIEM",
+          "Splunk"
+        ]
+      },
+      {
+        "name": "Penetration Testing",
+        "aliases": [
+          "Penetration Testing",
+          "Pen Testing",
+          "Pentesting"
+        ]
+      },
+      {
+        "name": "Ethical Hacking",
+        "aliases": [
+          "Ethical Hacking"
+        ]
+      },
+      {
+        "name": "Cryptography",
+        "aliases": [
+          "Cryptography",
+          "Encryption"
+        ]
+      },
+      {
+        "name": "SAML",
+        "aliases": [
+          "SAML",
+          "OAuth",
+          "OAuth 2.0",
+          "SSL/TLS"
+        ]
+      }
+    ],
+    "operating_systems": [
+      {
+        "name": "Linux",
+        "aliases": [
+          "Linux",
+          "linux"
+        ]
+      },
+      {
+        "name": "Windows",
+        "aliases": [
+          "Windows",
+          "windows",
+          "Win10",
+          "Win11"
+        ]
+      },
+      {
+        "name": "Ubuntu",
+        "aliases": [
+          "Ubuntu",
+          "ubuntu"
+        ]
+      },
+      {
+        "name": "CentOS",
+        "aliases": [
+          "CentOS",
+          "Centos"
+        ]
+      },
+      {
+        "name": "Red Hat",
+        "aliases": [
+          "Red Hat",
+          "RHEL",
+          "RedHat"
+        ]
+      },
+      {
+        "name": "macOS",
+        "aliases": [
+          "macOS",
+          "MacOS",
+          "Mac OS X",
+          "OSX"
+        ]
+      },
+      {
+        "name": "Unix",
+        "aliases": [
+          "Unix",
+          "unix"
+        ]
+      }
+    ],
+    "version_control": [
+      {
+        "name": "Git",
+        "aliases": [
+          "Git",
+          "git"
+        ]
+      },
+      {
+        "name": "GitHub",
+        "aliases": [
+          "GitHub",
+          "Github"
+        ]
+      },
+      {
+        "name": "GitLab",
+        "aliases": [
+          "GitLab",
+          "Gitlab"
+        ]
+      },
+      {
+        "name": "Bitbucket",
+        "aliases": [
+          "Bitbucket",
+          "bitbucket"
+        ]
+      },
+      {
+        "name": "SVN",
+        "aliases": [
+          "SVN",
+          "Subversion"
+        ]
+      }
+    ],
+    "testing": [
+      {
+        "name": "JUnit",
+        "aliases": [
+          "JUnit",
+          "Junit"
+        ]
+      },
+      {
+        "name": "PyTest",
+        "aliases": [
+          "PyTest",
+          "pytest"
+        ]
+      },
+      {
+        "name": "Selenium",
+        "aliases": [
+          "Selenium",
+          "Selenium WebDriver"
+        ]
+      },
+      {
+        "name": "Cypress",
+        "aliases": [
+          "Cypress"
+        ]
+      },
+      {
+        "name": "Playwright",
+        "aliases": [
+          "Playwright"
+        ]
+      },
+      {
+        "name": "Postman",
+        "aliases": [
+          "Postman"
+        ]
+      },
+      {
+        "name": "Jest",
+        "aliases": [
+          "Jest",
+          "jest"
+        ]
+      },
+      {
+        "name": "Mocha",
+        "aliases": [
+          "Mocha"
+        ]
+      }
+    ],
+    "mobile": [
+      {
+        "name": "Android SDK",
+        "aliases": [
+          "Android SDK",
+          "Android Development",
+          "Android"
+        ]
+      },
+      {
+        "name": "iOS SDK",
+        "aliases": [
+          "iOS SDK",
+          "iOS Development",
+          "iOS"
+        ]
+      },
+      {
+        "name": "Flutter",
+        "aliases": [
+          "Flutter"
+        ]
+      },
+      {
+        "name": "React Native",
+        "aliases": [
+          "React Native",
+          "ReactNative"
+        ]
+      },
+      {
+        "name": "Xamarin",
+        "aliases": [
+          "Xamarin"
+        ]
+      }
+    ],
+    "general_tools": [
+      {
+        "name": "Figma",
+        "aliases": [
+          "Figma"
+        ]
+      },
+      {
+        "name": "Jira",
+        "aliases": [
+          "Jira"
+        ]
+      },
+      {
+        "name": "Confluence",
+        "aliases": [
+          "Confluence"
+        ]
+      },
+      {
+        "name": "VS Code",
+        "aliases": [
+          "VS Code",
+          "VSCode",
+          "Visual Studio Code"
+        ]
+      },
+      {
+        "name": "IntelliJ IDEA",
+        "aliases": [
+          "IntelliJ IDEA",
+          "IntelliJ"
+        ]
+      },
+      {
+        "name": "Eclipse",
+        "aliases": [
+          "Eclipse"
+        ]
+      },
+      {
+        "name": "Visual Studio",
+        "aliases": [
+          "Visual Studio",
+          "VS"
+        ]
+      },
+      {
+        "name": "Power BI",
+        "aliases": [
+          "Power BI",
+          "PowerBI"
+        ]
+      },
+      {
+        "name": "Tableau",
+        "aliases": [
+          "Tableau"
+        ]
+      },
+      {
+        "name": "Microsoft Excel",
+        "aliases": [
+          "Excel",
+          "Microsoft Excel",
+          "MS Excel"
+        ]
+      }
+    ]
+  }
+}

@@ -12,10 +12,8 @@ function AppContent() {
   const { loading, busy, error, notice, refresh, clearError, setNotice } = useAppData();
 
   useEffect(() => {
-    if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(""), 5500);
-    return () => window.clearTimeout(timer);
-  }, [notice, setNotice]);
+    setNotice("");
+  }, [page]);
 
   if (loading) {
     return (

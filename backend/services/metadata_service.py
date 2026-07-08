@@ -1,5 +1,4 @@
 
-from datetime import datetime
 from pathlib import Path
 import csv
 import logging
@@ -10,6 +9,7 @@ from backend.services.llm_metadata_extractor import (
     extract_enrichment_with_ollama,
     is_fresher,
 )
+from backend.services.skills_service import enhance_skills
 
 logger = logging.getLogger(__name__)
 
@@ -85,21 +85,18 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
     fresher = "Yes" if is_fresher(text) else "No"
     
     has_experience = has_professional_experience(text)
-
-    print("\nHAS EXPERIENCE:")
-    print(has_experience)
-
-    print("\nLLM METADATA:")
-    print(llm_metadata)
-
-    print("\nLLM ENRICHMENT:")
-    print(llm_enrichment)
+    enhanced_skills = enhance_skills(
+        llm_enrichment.get("skills", []),
+        text,
+    )
 
     logger.info(
         "Validated LLM metadata for %s: %s",
         file_name,
         llm_metadata,
     )
+    logger.debug("Professional experience detected for %s: %s", file_name, has_experience)
+    logger.debug("Validated LLM enrichment for %s: %s", file_name, llm_enrichment)
 
     fallback_metadata = None
 
@@ -152,7 +149,7 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
         ),
 
         "Skills": (
-            llm_enrichment.get("skills", [])
+            enhanced_skills
         ),
         "Fresher": fresher,
     }
@@ -480,9 +477,6 @@ def title_case_name(value):
     if value.isupper() or value.islower():
         return value.title()
     return value
-
-from datetime import datetime
-import re
 
 MONTHS = {
     "jan":1,

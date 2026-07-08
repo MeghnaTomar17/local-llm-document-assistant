@@ -1,0 +1,43 @@
+{
+  "state": "COMPLETED",
+  "running": false,
+  "processed": 3,
+  "total": 3,
+  "failed": 0,
+  "duplicates": 3,
+  "duplicate_warnings": [
+    {
+      "file_name": "AmarResume.docx",
+      "candidate_name": "Amar G K",
+      "email": "Unknown",
+      "phone": "+91 984 234 5678",
+      "reason": "File Hash",
+      "timestamp": "2026-07-08T15:40:00.086022+00:00"
+    },
+    {
+      "file_name": "P.Naveen-CV (1).pdf",
+      "candidate_name": "P.Naveen",
+      "email": "naveenprabhu1301@gmail.com",
+      "phone": "7904 050165",
+      "reason": "File Hash",
+      "timestamp": "2026-07-08T15:40:00.112447+00:00"
+    },
+    {
+      "file_name": "Padmashree-Dhamodharan-Resume-1.pdf",
+      "candidate_name": "Padmashree Dhamodharan",
+      "email": "dpadhu1995@gmail.com",
+      "phone": "9344307715",
+      "reason": "File Hash",
+      "timestamp": "2026-07-08T15:40:00.134140+00:00"
+    }
+  ],
+  "current_file": "",
+  "last_completed_file": "Padmashree-Dhamodharan-Resume-1.pdf",
+  "message": "Bulk import finished. 3 of 3 resumes processed.",
+  "started_at": "2026-07-08T15:39:59.662899+00:00",
+  "updated_at": "2026-07-08T15:40:00.169826+00:00",
+  "finished_at": "2026-07-08T15:40:00.158374+00:00",
+  "interrupted": false,
+  "interrupted_at": null,
+  "pid": 19180
+}

@@ -1,5 +1,5 @@
 import { Database, FileText, MapPin, MessageSquare, Search, UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ResumeWorkspace } from "../components/resume/ResumeWorkspace";
 import { useAppData } from "../context/AppContext";
 import { getResume } from "../services/resumeApi";
@@ -9,8 +9,6 @@ import { Loader } from "../components/ui/Loader";
 import { SessionSkeletons, WorkspaceSkeleton } from "../components/ui/Skeleton";
 import { Table, type TableColumn } from "../components/ui/Table";
 import type { BulkImportStatus, RecruiterSession, ResumeDetail, ResumeListItem, UUID } from "../types";
-
-const BULK_IMPORT_STALE_TIMEOUT_MS = 15_000;
 
 export function SessionsPage() {
   const { sessions, activeSessionId, activeSessionResumes, busy, bulkImportStatus, sessionsLoaded, setNotice, updateResumeInState, handleSwitchSession } = useAppData();
@@ -43,14 +41,14 @@ export function SessionsPage() {
 
   return (
     <div className="sessions-page">
+      <ImportStatusPanel status={bulkImportStatus} />
+
       <header className="page-header">
         <div>
           <h2>Sessions</h2>
           <p>Manage uploaded resumes and continue reviewing candidates anytime.</p>
         </div>
       </header>
-
-      <ImportStatusPanel status={bulkImportStatus} />
 
       <section className="split-layout sessions-layout">
         <div className="panel">
@@ -171,24 +169,207 @@ export function SessionsPage() {
 
 function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
   const [now, setNow] = useState(Date.now());
+  const [showDuplicatesList, setShowDuplicatesList] = useState(false);
+  const [activeDuplicateToast, setActiveDuplicateToast] = useState<{
+    file_name: string;
+    candidate_name: string;
+    email: string;
+    phone: string;
+    reason: string;
+    timestamp: string;
+  } | null>(null);
+
+  const displayedWarningsRef = useRef<Set<string>>(new Set());
+
   const total = status.total || 0;
   const processed = status.processed || 0;
+  const failed = status.failed || 0;
   const progress = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
   const currentFile = status.current_file || "";
   const lastUpdate = formatStatusTime(status.updated_at || status.finished_at || status.started_at);
-  const updatedAtMs = status.updated_at ? new Date(status.updated_at).getTime() : 0;
-  const interrupted = Boolean(status.running && updatedAtMs && now - updatedAtMs > BULK_IMPORT_STALE_TIMEOUT_MS);
-  const eta = status.running && !interrupted ? estimateImportEta(status, now) : "";
+  const lifecycleState = getBulkImportState(status);
+  const isRunning = lifecycleState === "RUNNING";
+  const isInterrupted = lifecycleState === "INTERRUPTED";
+  const interruptedTimeMs = status.interrupted_at ? new Date(status.interrupted_at).getTime() : 0;
+  const etaReferenceTime = isInterrupted && interruptedTimeMs ? interruptedTimeMs : now;
+  const eta = isRunning || isInterrupted ? estimateImportEta(status, etaReferenceTime) : "";
 
   useEffect(() => {
-    if (!status.running || interrupted) return;
+    if (!isRunning) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [status.running, status.updated_at, interrupted]);
+  }, [isRunning, status.updated_at]);
 
-  if (!status.running) {
+  useEffect(() => {
+    if (status.duplicate_warnings && status.duplicate_warnings.length > 0) {
+      const newWarnings = status.duplicate_warnings.filter(
+        (w) => !displayedWarningsRef.current.has(w.file_name + w.timestamp)
+      );
+      if (newWarnings.length > 0) {
+        const latest = newWarnings[newWarnings.length - 1];
+        setActiveDuplicateToast(latest);
+        newWarnings.forEach((w) => displayedWarningsRef.current.add(w.file_name + w.timestamp));
+      }
+    }
+  }, [status.duplicate_warnings]);
+
+  useEffect(() => {
+    if (activeDuplicateToast) {
+      const timer = window.setTimeout(() => {
+        setActiveDuplicateToast(null);
+      }, 7000);
+      return () => window.clearTimeout(timer);
+    }
+  }, [activeDuplicateToast]);
+
+  function renderDuplicateToast() {
+    if (!activeDuplicateToast) return null;
+    return (
+      <div className="duplicate-toast fade-in">
+        <div className="duplicate-toast-header">
+          <strong>⚠ Candidate Already Exists</strong>
+          <button type="button" className="close-toast-btn" onClick={() => setActiveDuplicateToast(null)}>
+            &times;
+          </button>
+        </div>
+        <div className="duplicate-toast-body">
+          <p><strong>{activeDuplicateToast.candidate_name}</strong> already exists in the database.</p>
+          <p><small>Reason: Duplicate {activeDuplicateToast.reason.toLowerCase()}.</small></p>
+          <p className="toast-skip-note">This resume was skipped.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const showSummary = lifecycleState === "COMPLETED" && status.finished_at && status.total > 0;
+
+  if (showSummary) {
+    const successes = Math.max(0, processed - failed - (status.duplicates || 0));
+    return (
+      <section className="import-status-panel import-status-summary">
+        {activeDuplicateToast && renderDuplicateToast()}
+        <div className="section-title">
+          <div>
+            <h3><Database size={17} /> Bulk Import Completed</h3>
+            <span>The bulk import process has finished successfully.</span>
+          </div>
+          <Badge tone="success">Completed</Badge>
+        </div>
+        
+        <div className="import-summary-box">
+          <div className="import-summary-grid">
+            <div className="summary-item success">
+              <span>Imported Successfully</span>
+              <strong>{successes}</strong>
+            </div>
+            <div className="summary-item duplicate">
+              <span>Duplicates Skipped</span>
+              <strong>{status.duplicates || 0}</strong>
+            </div>
+            <div className="summary-item failed">
+              <span>Failed</span>
+              <strong>{failed}</strong>
+            </div>
+          </div>
+        </div>
+
+        {status.duplicate_warnings && status.duplicate_warnings.length > 0 && (
+          <div className="duplicate-warnings-section">
+            <button 
+              type="button" 
+              className="toggle-duplicates-btn"
+              onClick={() => setShowDuplicatesList(!showDuplicatesList)}
+            >
+              {showDuplicatesList ? "Hide" : "Show"} Skipped Duplicates ({status.duplicate_warnings.length})
+            </button>
+            {showDuplicatesList && (
+              <ul className="duplicate-warnings-list">
+                {status.duplicate_warnings.map((w, idx) => (
+                  <li key={idx} className="duplicate-warning-item">
+                    <strong>{w.file_name}</strong> – {w.candidate_name} ({w.reason})
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        
+        <div className="import-idle-meta">
+          <span>Completed At</span>
+          <strong>{formatStatusTime(status.finished_at)}</strong>
+        </div>
+      </section>
+    );
+  }
+
+  if (isInterrupted) {
+    const interruptedTime = formatStatusTime(status.interrupted_at || status.updated_at);
+    return (
+      <section className="import-status-panel import-status-interrupted">
+        {activeDuplicateToast && renderDuplicateToast()}
+        <div className="section-title">
+          <div>
+            <h3><Database size={17} /> Import Status</h3>
+            <span>Bulk import was interrupted.</span>
+          </div>
+          <Badge tone="danger">Interrupted</Badge>
+        </div>
+        <div className="import-progress-grid">
+          <div>
+            <span>Processed</span>
+            <strong>{processed}</strong>
+          </div>
+          <div>
+            <span>Failed</span>
+            <strong>{failed}</strong>
+          </div>
+          <div className="import-current-file">
+            <span>Last processed file</span>
+            <strong title={status.last_completed_file || currentFile || "None"}>
+              {status.last_completed_file || currentFile || "None"}
+            </strong>
+          </div>
+          <div>
+            <span>Time interrupted</span>
+            <strong>{interruptedTime}</strong>
+          </div>
+        </div>
+        <div className="progress-track">
+          <div className="progress-bar is-interrupted" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="import-runtime-meta">
+          <small>{progress}% complete before interruption</small>
+          <small>ETA {eta || "calculating..."} (Paused)</small>
+        </div>
+
+        {status.duplicate_warnings && status.duplicate_warnings.length > 0 && (
+          <div className="duplicate-warnings-section">
+            <button 
+              type="button" 
+              className="toggle-duplicates-btn"
+              onClick={() => setShowDuplicatesList(!showDuplicatesList)}
+            >
+              {showDuplicatesList ? "Hide" : "Show"} Skipped Duplicates ({status.duplicate_warnings.length})
+            </button>
+            {showDuplicatesList && (
+              <ul className="duplicate-warnings-list">
+                {status.duplicate_warnings.map((w, idx) => (
+                  <li key={idx} className="duplicate-warning-item">
+                    <strong>{w.file_name}</strong> – {w.candidate_name} ({w.reason})
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  if (!isRunning) {
     return (
       <section className="import-status-panel import-status-idle">
+        {activeDuplicateToast && renderDuplicateToast()}
         <div className="section-title">
           <div>
             <h3><Database size={17} /> Import Status</h3>
@@ -205,37 +386,70 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
   }
 
   return (
-    <section className={`import-status-panel ${interrupted ? "is-interrupted" : "is-running"}`}>
+    <section className="import-status-panel import-status-running">
+      {activeDuplicateToast && renderDuplicateToast()}
       <div className="section-title">
         <div>
           <h3><Database size={17} /> Import Status</h3>
-          <span>{interrupted ? "Bulk import has stopped sending updates." : "Bulk resume import is running."}</span>
+          <span>Bulk resume import is running.</span>
         </div>
-        <Badge tone={interrupted ? "warning" : "info"}>{interrupted ? "Interrupted" : "Running"}</Badge>
+        <Badge tone="info">Running</Badge>
       </div>
       <div className="import-progress-grid">
         <div>
-          <strong>{total ? `${processed} of ${total}` : "No active import"}</strong>
-          <span>{status.failed ? `${status.failed} failed` : "No failures reported"}</span>
+          <span>Processed</span>
+          <strong>{total ? `${processed} of ${total}` : "0"}</strong>
+        </div>
+        <div>
+          <span>Failed</span>
+          <strong>{failed} failed</strong>
         </div>
         <div className="import-current-file">
-          <span>{interrupted ? "Last known file" : "Current file"}</span>
-          <strong>{currentFile || status.message || "Preparing next resume..."}</strong>
+          <span>Current file</span>
+          <strong title={currentFile || "Preparing next resume..."}>{currentFile || "Preparing next resume..."}</strong>
         </div>
       </div>
       <div className="progress-track">
-        <div>
-          className={`progress-bar ${!total ? "is-indeterminate" : ""}`}
+        <div
+          className={`progress-bar is-live ${!total ? "is-indeterminate" : ""}`}
           style={total ? { width: `${progress}%` } : undefined}
-        </div>
+        />
       </div>
       <div className="import-runtime-meta">
-        <small>{total ? `${progress}% complete` : "Calculating progress..."}</small>
-        <small>{interrupted ? "ETA paused" : eta ? `ETA ${eta}` : "ETA calculating"}</small>
-        <small>Updated {lastUpdate}</small>
+        <small>{total ? `${progress}% complete` : "Calculating..."}</small>
+        <small>{eta ? `ETA ${eta}` : ""}</small>
       </div>
+
+      {status.duplicate_warnings && status.duplicate_warnings.length > 0 && (
+        <div className="duplicate-warnings-section">
+          <button 
+            type="button" 
+            className="toggle-duplicates-btn"
+            onClick={() => setShowDuplicatesList(!showDuplicatesList)}
+          >
+            {showDuplicatesList ? "Hide" : "Show"} Skipped Duplicates ({status.duplicate_warnings.length})
+          </button>
+          {showDuplicatesList && (
+            <ul className="duplicate-warnings-list">
+              {status.duplicate_warnings.map((w, idx) => (
+                <li key={idx} className="duplicate-warning-item">
+                  <strong>{w.file_name}</strong> – {w.candidate_name} ({w.reason})
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   );
+}
+
+function getBulkImportState(status: BulkImportStatus) {
+  if (status.state) return status.state;
+  if (status.interrupted) return "INTERRUPTED";
+  if (status.running) return "RUNNING";
+  if (status.finished_at) return "COMPLETED";
+  return "IDLE";
 }
 
 function formatStatusTime(value?: string | null) {

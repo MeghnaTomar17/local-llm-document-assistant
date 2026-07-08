@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import time
 import uuid
 
@@ -13,6 +14,12 @@ router = APIRouter()
 UPLOAD_DIR = Path("backend/uploads")
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 UPLOAD_CHUNK_SIZE = 1024 * 1024
+ENABLE_DEBUG_ENDPOINTS = os.getenv("ENABLE_DEBUG_ENDPOINTS", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def require_debug_endpoints_enabled() -> None:
+    if not ENABLE_DEBUG_ENDPOINTS:
+        raise HTTPException(status_code=404, detail="Not found.")
 
 
 async def save_upload_to_disk(file: UploadFile, file_path: Path) -> None:
@@ -52,7 +59,7 @@ async def upload_document(
     except DuplicateCandidateError as exc:
         return exc.payload
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Failed to process resume.") from exc
 
     return {
         "session_id": session.session_id,
@@ -99,7 +106,7 @@ async def upload_documents(
             errors.append(
                 {
                     "file_name": file.filename or "",
-                    "error": str(exc),
+                    "error": "Failed to save uploaded file.",
                 }
             )
 
@@ -148,7 +155,7 @@ async def ask_question(payload: dict):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Failed to generate a resume answer.") from exc
 
     result["response_time"] = time.time() - start
     result["message"]["response_time"] = result["response_time"]
@@ -239,11 +246,12 @@ def session_resumes(session_id: str):
             "resumes": document_service.session_resumes(session_id),
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Failed to load session resumes.") from exc
 
 
 @router.get("/debug")
 def debug(session_id: str | None = None):
+    require_debug_endpoints_enabled()
     return document_service.debug_payload(session_id=session_id)
 
 
@@ -254,6 +262,7 @@ def metadata(session_id: str | None = None):
 
 @router.post("/reset")
 def reset_runtime_state():
+    require_debug_endpoints_enabled()
     return document_service.reset()
 
 

@@ -1,12 +1,18 @@
 {
+  "state": "COMPLETED",
   "running": false,
-  "processed": 4,
-  "total": 4,
-  "failed": 1,
+  "processed": 2,
+  "total": 2,
+  "failed": 0,
+  "duplicates": 0,
+  "duplicate_warnings": [],
   "current_file": "",
-  "last_completed_file": "SUNDARA_SARAVANAN_08_02_2023.pdf",
-  "message": "Bulk import finished. 4 of 4 resumes processed.",
-  "started_at": "2026-07-08T10:40:36.192517+00:00",
-  "updated_at": "2026-07-08T10:43:02.865649+00:00",
-  "finished_at": "2026-07-08T10:43:02.837158+00:00"
+  "last_completed_file": "Deepak-M-GIS-CV 1 (1).pdf",
+  "message": "Bulk import finished. 2 of 2 resumes processed.",
+  "started_at": "2026-07-08T17:14:43.122703+00:00",
+  "updated_at": "2026-07-08T17:16:56.716860+00:00",
+  "finished_at": "2026-07-08T17:16:56.691722+00:00",
+  "interrupted": false,
+  "interrupted_at": null,
+  "pid": 12904
 }

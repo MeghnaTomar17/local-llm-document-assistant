@@ -5,11 +5,19 @@ import logging
 import os
 from pathlib import Path
 import re
+from threading import RLock
 import time
 
 import requests
+from requests.adapters import HTTPAdapter
 
 from backend.llm_sql.services.sql_validator import SQLValidationResult, SQLValidator
+
+_prompt_cache: dict[Path, str] = {}
+_prompt_cache_lock = RLock()
+_http_session = requests.Session()
+_http_session.mount("http://", HTTPAdapter(pool_connections=4, pool_maxsize=12))
+_http_session.mount("https://", HTTPAdapter(pool_connections=4, pool_maxsize=12))
 
 
 logger = logging.getLogger(__name__)
@@ -140,13 +148,19 @@ class SQLGenerator:
 
     @staticmethod
     def _read_prompt_file(path: Path) -> str:
-        if not path.exists():
-            raise SQLGenerationError(f"Prompt file not found: {path}")
+        resolved_path = path.resolve()
+        with _prompt_cache_lock:
+            if resolved_path in _prompt_cache:
+                return _prompt_cache[resolved_path]
+            if not resolved_path.exists():
+                raise SQLGenerationError(f"Prompt file not found: {resolved_path}")
 
-        return path.read_text(encoding="utf-8").strip()
+            content = resolved_path.read_text(encoding="utf-8").strip()
+            _prompt_cache[resolved_path] = content
+            return content
 
     def _call_ollama(self, prompt: str) -> str:
-        response = requests.post(
+        response = _http_session.post(
             self.config.ollama_url,
             json={
                 "model": self.config.model,

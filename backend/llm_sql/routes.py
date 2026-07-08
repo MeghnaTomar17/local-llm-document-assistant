@@ -10,8 +10,8 @@ from backend.llm_sql.schemas import (
     RecruiterSearchResponse,
 )
 from backend.llm_sql.services.recruiter_search_service import (
-    RecruiterSearchService,
     SQLSearchValidationError,
+    get_recruiter_search_service,
 )
 from backend.llm_sql.services.sql_executor import SQLExecutionError
 from backend.llm_sql.services.sql_generator import SQLGenerationError
@@ -32,7 +32,7 @@ router = APIRouter(tags=["Recruiter Search"])
 
 @router.post("/search", response_model=RecruiterSearchResponse)
 def recruiter_search(payload: RecruiterSearchRequest) -> RecruiterSearchResponse:
-    service = RecruiterSearchService()
+    service = get_recruiter_search_service()
 
     try:
         return service.search(payload.query, session_id=payload.session_id)

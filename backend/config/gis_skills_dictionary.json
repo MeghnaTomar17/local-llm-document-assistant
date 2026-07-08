@@ -1,0 +1,1580 @@
+{
+  "categories": {
+    "esri_ecosystem": [
+      {
+        "name": "ArcGIS",
+        "aliases": [
+          "ArcGIS",
+          "Arc GIS",
+          "ArcMap",
+          "Arc Map",
+          "ArcCatalog",
+          "ArcSDE",
+          "ArcOnline",
+          "ArcGIS Online",
+          "ArcGIS Enterprise"
+        ]
+      },
+      {
+        "name": "ArcGIS Pro",
+        "aliases": [
+          "ArcGIS Pro",
+          "ArcGISPro"
+        ]
+      },
+      {
+        "name": "ArcGIS Server",
+        "aliases": [
+          "ArcGIS Server",
+          "ArcGISServer"
+        ]
+      },
+      {
+        "name": "ArcGIS Portal",
+        "aliases": [
+          "ArcGIS Portal",
+          "Portal for ArcGIS",
+          "ArcGISPortal"
+        ]
+      },
+      {
+        "name": "ArcGIS Dashboard",
+        "aliases": [
+          "ArcGIS Dashboard",
+          "ArcGIS Dashboards",
+          "Dashboards"
+        ]
+      },
+      {
+        "name": "ArcGIS Experience Builder",
+        "aliases": [
+          "ArcGIS Experience Builder",
+          "Experience Builder",
+          "ArcGIS ExperienceBuilder"
+        ]
+      },
+      {
+        "name": "ArcGIS StoryMaps",
+        "aliases": [
+          "ArcGIS StoryMaps",
+          "StoryMaps",
+          "Story Maps",
+          "ArcGIS Story Maps"
+        ]
+      },
+      {
+        "name": "ArcGIS Hub",
+        "aliases": [
+          "ArcGIS Hub",
+          "Hub"
+        ]
+      },
+      {
+        "name": "ArcGIS Insights",
+        "aliases": [
+          "ArcGIS Insights",
+          "Insights"
+        ]
+      },
+      {
+        "name": "ArcGIS Monitor",
+        "aliases": [
+          "ArcGIS Monitor",
+          "Monitor"
+        ]
+      },
+      {
+        "name": "ArcGIS Notebook Server",
+        "aliases": [
+          "ArcGIS Notebook Server",
+          "Notebook Server"
+        ]
+      },
+      {
+        "name": "ArcGIS Image Server",
+        "aliases": [
+          "ArcGIS Image Server",
+          "Image Server"
+        ]
+      },
+      {
+        "name": "ArcGIS GeoEvent Server",
+        "aliases": [
+          "ArcGIS GeoEvent Server",
+          "GeoEvent Server",
+          "GeoEvent"
+        ]
+      },
+      {
+        "name": "ArcGIS Mission",
+        "aliases": [
+          "ArcGIS Mission"
+        ]
+      },
+      {
+        "name": "ArcGIS Indoors",
+        "aliases": [
+          "ArcGIS Indoors",
+          "Indoors"
+        ]
+      },
+      {
+        "name": "ArcGIS Workforce",
+        "aliases": [
+          "ArcGIS Workforce",
+          "Workforce"
+        ]
+      },
+      {
+        "name": "ArcGIS Field Maps",
+        "aliases": [
+          "ArcGIS Field Maps",
+          "Field Maps"
+        ]
+      },
+      {
+        "name": "ArcGIS Survey123",
+        "aliases": [
+          "ArcGIS Survey123",
+          "Survey123",
+          "Survey 123"
+        ]
+      },
+      {
+        "name": "ArcGIS QuickCapture",
+        "aliases": [
+          "ArcGIS QuickCapture",
+          "QuickCapture"
+        ]
+      },
+      {
+        "name": "ArcGIS Navigator",
+        "aliases": [
+          "ArcGIS Navigator",
+          "Navigator"
+        ]
+      },
+      {
+        "name": "ArcGIS Collector",
+        "aliases": [
+          "ArcGIS Collector",
+          "Collector for ArcGIS",
+          "Collector"
+        ]
+      },
+      {
+        "name": "ArcGIS Runtime SDK",
+        "aliases": [
+          "ArcGIS Runtime SDK",
+          "ArcGIS Runtime"
+        ]
+      },
+      {
+        "name": "ArcGIS API for Python",
+        "aliases": [
+          "ArcGIS API for Python",
+          "ArcPy",
+          "Arc Py"
+        ]
+      },
+      {
+        "name": "ArcGIS JavaScript SDK",
+        "aliases": [
+          "ArcGIS JavaScript SDK",
+          "ArcGIS API for JavaScript",
+          "ArcGIS JS SDK",
+          "ArcGIS JS API"
+        ]
+      },
+      {
+        "name": "ArcObjects",
+        "aliases": [
+          "ArcObjects",
+          "Arc Objects"
+        ]
+      },
+      {
+        "name": "ArcPy",
+        "aliases": [
+          "ArcPy",
+          "Arc Py"
+        ]
+      },
+      {
+        "name": "ModelBuilder",
+        "aliases": [
+          "ModelBuilder",
+          "Model Builder"
+        ]
+      },
+      {
+        "name": "ArcIMS",
+        "aliases": [
+          "ArcIMS",
+          "Arc IMS"
+        ]
+      },
+      {
+        "name": "ArcTools",
+        "aliases": [
+          "ArcTools",
+          "Arc Tools",
+          "ArcToolbox"
+        ]
+      },
+      {
+        "name": "ArcGIS Utility Network",
+        "aliases": [
+          "ArcGIS Utility Network",
+          "Utility Network"
+        ]
+      },
+      {
+        "name": "ArcGIS Earth",
+        "aliases": [
+          "ArcGIS Earth",
+          "ArcGIS-Earth"
+        ]
+      },
+      {
+        "name": "ArcGIS Location Services",
+        "aliases": [
+          "ArcGIS Location Services"
+        ]
+      }
+    ],
+    "gis_software": [
+      {
+        "name": "QGIS",
+        "aliases": [
+          "QGIS",
+          "Quantum GIS",
+          "QuantumGIS"
+        ]
+      },
+      {
+        "name": "GRASS GIS",
+        "aliases": [
+          "GRASS GIS",
+          "GRASSGIS",
+          "GRASS"
+        ]
+      },
+      {
+        "name": "SAGA GIS",
+        "aliases": [
+          "SAGA GIS",
+          "SAGAGIS",
+          "SAGA"
+        ]
+      },
+      {
+        "name": "gvSIG",
+        "aliases": [
+          "gvSIG"
+        ]
+      },
+      {
+        "name": "Global Mapper",
+        "aliases": [
+          "Global Mapper",
+          "GlobalMapper"
+        ]
+      },
+      {
+        "name": "Google Earth Pro",
+        "aliases": [
+          "Google Earth Pro",
+          "Google Earth"
+        ]
+      },
+      {
+        "name": "Google Earth Engine",
+        "aliases": [
+          "Google Earth Engine",
+          "GEE"
+        ]
+      },
+      {
+        "name": "GeoServer",
+        "aliases": [
+          "GeoServer",
+          "Geo Server"
+        ]
+      },
+      {
+        "name": "MapServer",
+        "aliases": [
+          "MapServer",
+          "Map Server"
+        ]
+      },
+      {
+        "name": "GeoNode",
+        "aliases": [
+          "GeoNode",
+          "Geo Node"
+        ]
+      },
+      {
+        "name": "MapStore",
+        "aliases": [
+          "MapStore",
+          "Map Store"
+        ]
+      },
+      {
+        "name": "OpenStreetMap",
+        "aliases": [
+          "OpenStreetMap",
+          "OSM"
+        ]
+      },
+      {
+        "name": "MapProxy",
+        "aliases": [
+          "MapProxy",
+          "Map Proxy"
+        ]
+      },
+      {
+        "name": "FME",
+        "aliases": [
+          "FME",
+          "Safe Software FME",
+          "Feature Manipulation Engine"
+        ]
+      },
+      {
+        "name": "MapInfo Professional",
+        "aliases": [
+          "MapInfo Professional",
+          "MapInfo",
+          "MapInfo Pro"
+        ]
+      },
+      {
+        "name": "SuperMap",
+        "aliases": [
+          "SuperMap",
+          "Super Map"
+        ]
+      },
+      {
+        "name": "TatukGIS",
+        "aliases": [
+          "TatukGIS"
+        ]
+      },
+      {
+        "name": "CARTO",
+        "aliases": [
+          "CARTO",
+          "CartoDB"
+        ]
+      },
+      {
+        "name": "Mapnik",
+        "aliases": [
+          "Mapnik"
+        ]
+      },
+      {
+        "name": "PostGIS",
+        "aliases": [
+          "PostGIS",
+          "Post GIS",
+          "PostgreSQL Spatial"
+        ]
+      }
+    ],
+    "gis_programming": [
+      {
+        "name": "ArcPy Scripting",
+        "aliases": [
+          "ArcPy Scripting",
+          "ArcPy",
+          "Arc Py"
+        ]
+      },
+      {
+        "name": "PySAL Development",
+        "aliases": [
+          "PySAL",
+          "Python Spatial Analysis Library"
+        ]
+      },
+      {
+        "name": "GeoPandas Scripting",
+        "aliases": [
+          "GeoPandas Scripting",
+          "GeoPandas",
+          "Geo Pandas"
+        ]
+      },
+      {
+        "name": "Shapely Coding",
+        "aliases": [
+          "Shapely"
+        ]
+      },
+      {
+        "name": "Fiona Scripting",
+        "aliases": [
+          "Fiona"
+        ]
+      },
+      {
+        "name": "Rasterio Development",
+        "aliases": [
+          "Rasterio",
+          "Raster io"
+        ]
+      },
+      {
+        "name": "PyProj Coding",
+        "aliases": [
+          "PyProj",
+          "Py Proj"
+        ]
+      },
+      {
+        "name": "EarthPy Scripting",
+        "aliases": [
+          "EarthPy",
+          "Earth Py"
+        ]
+      },
+      {
+        "name": "OSMnx Development",
+        "aliases": [
+          "OSMnx"
+        ]
+      },
+      {
+        "name": "Geopy Coding",
+        "aliases": [
+          "Geopy"
+        ]
+      },
+      {
+        "name": "Contextily Coding",
+        "aliases": [
+          "Contextily"
+        ]
+      },
+      {
+        "name": "Folium Development",
+        "aliases": [
+          "Folium"
+        ]
+      },
+      {
+        "name": "Rioxarray Development",
+        "aliases": [
+          "Rioxarray"
+        ]
+      },
+      {
+        "name": "Xarray Coding",
+        "aliases": [
+          "Xarray"
+        ]
+      },
+      {
+        "name": "Turf.js Coding",
+        "aliases": [
+          "Turf.js",
+          "TurfJS"
+        ]
+      },
+      {
+        "name": "CesiumJS Coding",
+        "aliases": [
+          "CesiumJS",
+          "Cesium.js"
+        ]
+      },
+      {
+        "name": "OpenLayers API",
+        "aliases": [
+          "OpenLayers API",
+          "OpenLayers"
+        ]
+      },
+      {
+        "name": "Mapbox GL JS Coding",
+        "aliases": [
+          "Mapbox GL JS",
+          "Mapbox GL"
+        ]
+      },
+      {
+        "name": "LeafletJS Coding",
+        "aliases": [
+          "LeafletJS",
+          "Leaflet"
+        ]
+      }
+    ],
+    "remote_sensing": [
+      {
+        "name": "ENVI",
+        "aliases": [
+          "ENVI",
+          "Harris ENVI"
+        ]
+      },
+      {
+        "name": "ERDAS IMAGINE",
+        "aliases": [
+          "ERDAS IMAGINE",
+          "ERDAS",
+          "Imagine"
+        ]
+      },
+      {
+        "name": "SNAP",
+        "aliases": [
+          "SNAP",
+          "ESA SNAP",
+          "Sentinel Application Platform"
+        ]
+      },
+      {
+        "name": "PCI Geomatica",
+        "aliases": [
+          "PCI Geomatica",
+          "Geomatica"
+        ]
+      },
+      {
+        "name": "eCognition",
+        "aliases": [
+          "eCognition",
+          "Definiens eCognition"
+        ]
+      },
+      {
+        "name": "Pix4D",
+        "aliases": [
+          "Pix4D",
+          "Pix4Dmapper"
+        ]
+      },
+      {
+        "name": "Agisoft Metashape",
+        "aliases": [
+          "Agisoft Metashape",
+          "Metashape",
+          "Agisoft PhotoScan",
+          "PhotoScan"
+        ]
+      },
+      {
+        "name": "DroneDeploy",
+        "aliases": [
+          "DroneDeploy",
+          "Drone Deploy"
+        ]
+      },
+      {
+        "name": "TerrSet",
+        "aliases": [
+          "TerrSet",
+          "Idrisi"
+        ]
+      },
+      {
+        "name": "Sentinel-1",
+        "aliases": [
+          "Sentinel-1",
+          "Sentinel 1",
+          "Sentinel1"
+        ]
+      },
+      {
+        "name": "Sentinel-2",
+        "aliases": [
+          "Sentinel-2",
+          "Sentinel 2",
+          "Sentinel2"
+        ]
+      },
+      {
+        "name": "Landsat",
+        "aliases": [
+          "Landsat",
+          "Landsat 8",
+          "Landsat 9"
+        ]
+      },
+      {
+        "name": "MODIS",
+        "aliases": [
+          "MODIS"
+        ]
+      },
+      {
+        "name": "WorldView",
+        "aliases": [
+          "WorldView",
+          "World View",
+          "WorldView-2",
+          "WorldView-3"
+        ]
+      },
+      {
+        "name": "PlanetScope",
+        "aliases": [
+          "PlanetScope",
+          "Planet Scope",
+          "Planet Labs"
+        ]
+      },
+      {
+        "name": "LiDAR",
+        "aliases": [
+          "LiDAR",
+          "Lidar",
+          "Light Detection and Ranging"
+        ]
+      },
+      {
+        "name": "SAR",
+        "aliases": [
+          "SAR",
+          "Synthetic Aperture Radar"
+        ]
+      },
+      {
+        "name": "InSAR",
+        "aliases": [
+          "InSAR",
+          "Interferometric SAR"
+        ]
+      },
+      {
+        "name": "Multispectral Imaging",
+        "aliases": [
+          "Multispectral Imaging",
+          "Multispectral"
+        ]
+      },
+      {
+        "name": "Hyperspectral Imaging",
+        "aliases": [
+          "Hyperspectral Imaging",
+          "Hyperspectral"
+        ]
+      },
+      {
+        "name": "Photogrammetry",
+        "aliases": [
+          "Photogrammetry",
+          "Aerial Photogrammetry"
+        ]
+      },
+      {
+        "name": "Orthomosaic",
+        "aliases": [
+          "Orthomosaic",
+          "Orthophoto",
+          "Orthoimage"
+        ]
+      },
+      {
+        "name": "Point Clouds",
+        "aliases": [
+          "Point Clouds",
+          "Point Cloud"
+        ]
+      },
+      {
+        "name": "Image Classification",
+        "aliases": [
+          "Image Classification",
+          "Supervised Classification",
+          "Unsupervised Classification"
+        ]
+      },
+      {
+        "name": "Object-Based Image Analysis",
+        "aliases": [
+          "Object-Based Image Analysis",
+          "OBIA",
+          "GEOBIA"
+        ]
+      },
+      {
+        "name": "NDVI",
+        "aliases": [
+          "NDVI",
+          "Normalized Difference Vegetation Index"
+        ]
+      },
+      {
+        "name": "Land Cover Classification",
+        "aliases": [
+          "Land Cover Classification",
+          "LULC"
+        ]
+      }
+    ],
+    "spatial_databases": [
+      {
+        "name": "PostGIS",
+        "aliases": [
+          "PostGIS",
+          "Post GIS",
+          "PostgreSQL Spatial"
+        ]
+      },
+      {
+        "name": "SpatiaLite",
+        "aliases": [
+          "SpatiaLite",
+          "Spatialite"
+        ]
+      },
+      {
+        "name": "Oracle Spatial",
+        "aliases": [
+          "Oracle Spatial",
+          "Oracle Locator",
+          "Oracle Spatial & Graph"
+        ]
+      },
+      {
+        "name": "SQL Server Spatial",
+        "aliases": [
+          "SQL Server Spatial",
+          "MS SQL Spatial",
+          "Microsoft SQL Server Spatial"
+        ]
+      },
+      {
+        "name": "GeoPackage",
+        "aliases": [
+          "GeoPackage",
+          "GPKG"
+        ]
+      },
+      {
+        "name": "File Geodatabase",
+        "aliases": [
+          "File Geodatabase",
+          "FileGDB",
+          "GDB"
+        ]
+      },
+      {
+        "name": "Enterprise Geodatabase",
+        "aliases": [
+          "Enterprise Geodatabase",
+          "SDE Geodatabase",
+          "SDE"
+        ]
+      },
+      {
+        "name": "MySQL Spatial",
+        "aliases": [
+          "MySQL Spatial"
+        ]
+      },
+      {
+        "name": "SQLite Spatial",
+        "aliases": [
+          "SQLite Spatial"
+        ]
+      },
+      {
+        "name": "H2 GIS",
+        "aliases": [
+          "H2 GIS",
+          "H2GIS"
+        ]
+      },
+      {
+        "name": "Teradata Spatial",
+        "aliases": [
+          "Teradata Spatial"
+        ]
+      },
+      {
+        "name": "DB2 Spatial",
+        "aliases": [
+          "DB2 Spatial",
+          "IBM DB2 Spatial"
+        ]
+      },
+      {
+        "name": "SAP HANA Spatial",
+        "aliases": [
+          "SAP HANA Spatial"
+        ]
+      }
+    ],
+    "gis_libraries": [
+      {
+        "name": "GeoPandas",
+        "aliases": [
+          "GeoPandas",
+          "Geo Pandas"
+        ]
+      },
+      {
+        "name": "Rasterio",
+        "aliases": [
+          "Rasterio",
+          "Raster io"
+        ]
+      },
+      {
+        "name": "Fiona",
+        "aliases": [
+          "Fiona"
+        ]
+      },
+      {
+        "name": "Shapely",
+        "aliases": [
+          "Shapely"
+        ]
+      },
+      {
+        "name": "PyProj",
+        "aliases": [
+          "PyProj",
+          "Py Proj"
+        ]
+      },
+      {
+        "name": "GDAL",
+        "aliases": [
+          "GDAL",
+          "Geospatial Data Abstraction Library"
+        ]
+      },
+      {
+        "name": "OGR",
+        "aliases": [
+          "OGR",
+          "GDAL/OGR"
+        ]
+      },
+      {
+        "name": "GEOS",
+        "aliases": [
+          "GEOS",
+          "Geometry Engine Open Source"
+        ]
+      },
+      {
+        "name": "PROJ",
+        "aliases": [
+          "PROJ",
+          "PROJ.4",
+          "PROJ4"
+        ]
+      },
+      {
+        "name": "Rioxarray",
+        "aliases": [
+          "Rioxarray"
+        ]
+      },
+      {
+        "name": "EarthPy",
+        "aliases": [
+          "EarthPy",
+          "Earth Py"
+        ]
+      },
+      {
+        "name": "PySAL",
+        "aliases": [
+          "PySAL",
+          "Python Spatial Analysis Library"
+        ]
+      },
+      {
+        "name": "WhiteboxTools",
+        "aliases": [
+          "WhiteboxTools",
+          "Whitebox Tools"
+        ]
+      },
+      {
+        "name": "OSMnx",
+        "aliases": [
+          "OSMnx"
+        ]
+      },
+      {
+        "name": "Geopy",
+        "aliases": [
+          "Geopy"
+        ]
+      },
+      {
+        "name": "Contextily",
+        "aliases": [
+          "Contextily"
+        ]
+      },
+      {
+        "name": "Folium",
+        "aliases": [
+          "Folium"
+        ]
+      },
+      {
+        "name": "Turf.js",
+        "aliases": [
+          "Turf.js",
+          "TurfJS"
+        ]
+      },
+      {
+        "name": "NetCDF4",
+        "aliases": [
+          "NetCDF4",
+          "netcdf"
+        ]
+      },
+      {
+        "name": "PyShp",
+        "aliases": [
+          "PyShp",
+          "pyshp"
+        ]
+      },
+      {
+        "name": "SpatialIndex",
+        "aliases": [
+          "SpatialIndex",
+          "spatialindex"
+        ]
+      },
+      {
+        "name": "Rtree",
+        "aliases": [
+          "Rtree",
+          "rtree"
+        ]
+      },
+      {
+        "name": "Pygeoif",
+        "aliases": [
+          "Pygeoif"
+        ]
+      },
+      {
+        "name": "Laspy",
+        "aliases": [
+          "Laspy"
+        ]
+      }
+    ],
+    "web_gis": [
+      {
+        "name": "Web GIS",
+        "aliases": [
+          "Web GIS",
+          "WebGIS"
+        ]
+      },
+      {
+        "name": "Web Map Service",
+        "aliases": [
+          "Web Map Service",
+          "WMS"
+        ]
+      },
+      {
+        "name": "Web Feature Service",
+        "aliases": [
+          "Web Feature Service",
+          "WFS"
+        ]
+      },
+      {
+        "name": "Web Coverage Service",
+        "aliases": [
+          "Web Coverage Service",
+          "WCS"
+        ]
+      },
+      {
+        "name": "Web Map Tile Service",
+        "aliases": [
+          "Web Map Tile Service",
+          "WMTS"
+        ]
+      },
+      {
+        "name": "Mapbox Vector Tiles",
+        "aliases": [
+          "Mapbox Vector Tiles",
+          "MVT"
+        ]
+      },
+      {
+        "name": "CartoDB",
+        "aliases": [
+          "CartoDB",
+          "Carto"
+        ]
+      },
+      {
+        "name": "Mapbox GL JS",
+        "aliases": [
+          "Mapbox GL JS",
+          "Mapbox GL"
+        ]
+      }
+    ],
+    "mapping_frameworks": [
+      {
+        "name": "Leaflet",
+        "aliases": [
+          "Leaflet",
+          "LeafletJS",
+          "Leaflet.js"
+        ]
+      },
+      {
+        "name": "OpenLayers",
+        "aliases": [
+          "OpenLayers",
+          "OpenLayersJS",
+          "OpenLayers.js",
+          "Open Layers"
+        ]
+      },
+      {
+        "name": "Cesium",
+        "aliases": [
+          "Cesium",
+          "CesiumJS",
+          "Cesium.js",
+          "Cesium JS"
+        ]
+      },
+      {
+        "name": "Mapbox",
+        "aliases": [
+          "Mapbox",
+          "Mapbox GL",
+          "Mapbox GL JS",
+          "Mapbox SDK"
+        ]
+      },
+      {
+        "name": "Kepler.gl",
+        "aliases": [
+          "Kepler.gl",
+          "KeplerGL"
+        ]
+      },
+      {
+        "name": "Deck.gl",
+        "aliases": [
+          "Deck.gl",
+          "DeckGL"
+        ]
+      },
+      {
+        "name": "ArcGIS API for JavaScript",
+        "aliases": [
+          "ArcGIS API for JavaScript",
+          "ArcGIS JavaScript SDK",
+          "ArcGIS JS API",
+          "ArcGIS JS SDK"
+        ]
+      },
+      {
+        "name": "D3.js",
+        "aliases": [
+          "D3.js",
+          "D3",
+          "D3JS"
+        ]
+      }
+    ],
+    "gis_file_formats": [
+      {
+        "name": "Shapefile",
+        "aliases": [
+          "Shapefile",
+          "Shape file",
+          "SHP",
+          "shp"
+        ]
+      },
+      {
+        "name": "GeoJSON",
+        "aliases": [
+          "GeoJSON",
+          "Geo JSON",
+          "geojson"
+        ]
+      },
+      {
+        "name": "GeoTIFF",
+        "aliases": [
+          "GeoTIFF",
+          "Geo TIFF",
+          "Geotiff",
+          "geotiff"
+        ]
+      },
+      {
+        "name": "KML",
+        "aliases": [
+          "KML",
+          "Keyhole Markup Language"
+        ]
+      },
+      {
+        "name": "KMZ",
+        "aliases": [
+          "KMZ"
+        ]
+      },
+      {
+        "name": "GeoPackage",
+        "aliases": [
+          "GeoPackage",
+          "Geo Package",
+          "GPKG",
+          "gpkg"
+        ]
+      },
+      {
+        "name": "File Geodatabase",
+        "aliases": [
+          "File Geodatabase",
+          "FileGDB",
+          "GDB",
+          "gdb"
+        ]
+      },
+      {
+        "name": "Lidar LAS",
+        "aliases": [
+          "LAS",
+          "LAZ",
+          "Lidar LAS"
+        ]
+      },
+      {
+        "name": "DXF",
+        "aliases": [
+          "DXF",
+          "dxf"
+        ]
+      },
+      {
+        "name": "DWG",
+        "aliases": [
+          "DWG",
+          "dwg"
+        ]
+      },
+      {
+        "name": "GeoJSON-LD",
+        "aliases": [
+          "GeoJSON-LD",
+          "GeoJSONLD"
+        ]
+      },
+      {
+        "name": "HDF5",
+        "aliases": [
+          "HDF5",
+          "hdf5"
+        ]
+      },
+      {
+        "name": "NetCDF",
+        "aliases": [
+          "NetCDF",
+          "netcdf"
+        ]
+      },
+      {
+        "name": "ECW",
+        "aliases": [
+          "ECW",
+          "ecw"
+        ]
+      },
+      {
+        "name": "MrSID",
+        "aliases": [
+          "MrSID",
+          "mrsid"
+        ]
+      },
+      {
+        "name": "Esri Grid",
+        "aliases": [
+          "Esri Grid",
+          "ArcInfo Grid"
+        ]
+      }
+    ],
+    "spatial_analysis": [
+      {
+        "name": "Geocoding",
+        "aliases": [
+          "Geocoding"
+        ]
+      },
+      {
+        "name": "Reverse Geocoding",
+        "aliases": [
+          "Reverse Geocoding",
+          "Reverse-Geocoding"
+        ]
+      },
+      {
+        "name": "Georeferencing",
+        "aliases": [
+          "Georeferencing",
+          "Geo-referencing"
+        ]
+      },
+      {
+        "name": "Digitization",
+        "aliases": [
+          "Digitization",
+          "Digitising",
+          "Digitizing"
+        ]
+      },
+      {
+        "name": "Cartography",
+        "aliases": [
+          "Cartography",
+          "Map Design"
+        ]
+      },
+      {
+        "name": "Network Analysis",
+        "aliases": [
+          "Network Analysis",
+          "Routing Analysis",
+          "Service Area Analysis"
+        ]
+      },
+      {
+        "name": "Spatial Analysis",
+        "aliases": [
+          "Spatial Analysis",
+          "Geospatial Analysis"
+        ]
+      },
+      {
+        "name": "Spatial Interpolation",
+        "aliases": [
+          "Spatial Interpolation",
+          "Kriging",
+          "IDW",
+          "Inverse Distance Weighting"
+        ]
+      },
+      {
+        "name": "Raster Analysis",
+        "aliases": [
+          "Raster Analysis"
+        ]
+      },
+      {
+        "name": "Vector Analysis",
+        "aliases": [
+          "Vector Analysis"
+        ]
+      },
+      {
+        "name": "Geoprocessing",
+        "aliases": [
+          "Geoprocessing"
+        ]
+      },
+      {
+        "name": "Buffer Analysis",
+        "aliases": [
+          "Buffer Analysis",
+          "Buffering"
+        ]
+      },
+      {
+        "name": "Overlay Analysis",
+        "aliases": [
+          "Overlay Analysis",
+          "Spatial Overlay"
+        ]
+      },
+      {
+        "name": "Topology",
+        "aliases": [
+          "Topology",
+          "Spatial Topology"
+        ]
+      },
+      {
+        "name": "Hydrological Analysis",
+        "aliases": [
+          "Hydrological Analysis",
+          "Watershed Extraction",
+          "Flow Direction"
+        ]
+      },
+      {
+        "name": "Terrain Analysis",
+        "aliases": [
+          "Terrain Analysis",
+          "DEM Analysis",
+          "Slope Analysis",
+          "Aspect Analysis"
+        ]
+      },
+      {
+        "name": "Coordinate Reference System",
+        "aliases": [
+          "Coordinate Reference System",
+          "CRS",
+          "EPSG",
+          "Coordinate System"
+        ]
+      },
+      {
+        "name": "Spatial Statistics",
+        "aliases": [
+          "Spatial Statistics",
+          "Spatial Autocorrelation",
+          "Moran's I",
+          "Getis-Ord"
+        ]
+      },
+      {
+        "name": "Viewshed Analysis",
+        "aliases": [
+          "Viewshed Analysis",
+          "Viewshed"
+        ]
+      },
+      {
+        "name": "Least Cost Path",
+        "aliases": [
+          "Least Cost Path",
+          "Least Cost Routing"
+        ]
+      }
+    ],
+    "surveying_gps": [
+      {
+        "name": "GPS",
+        "aliases": [
+          "GPS",
+          "Global Positioning System"
+        ]
+      },
+      {
+        "name": "GNSS",
+        "aliases": [
+          "GNSS",
+          "Global Navigation Satellite System"
+        ]
+      },
+      {
+        "name": "RTK",
+        "aliases": [
+          "RTK",
+          "Real-Time Kinematic"
+        ]
+      },
+      {
+        "name": "DGPS",
+        "aliases": [
+          "DGPS",
+          "Differential GPS"
+        ]
+      },
+      {
+        "name": "Surveying",
+        "aliases": [
+          "Surveying",
+          "Land Surveying"
+        ]
+      },
+      {
+        "name": "Total Station",
+        "aliases": [
+          "Total Station",
+          "Totalstation"
+        ]
+      },
+      {
+        "name": "Theodolite",
+        "aliases": [
+          "Theodolite"
+        ]
+      },
+      {
+        "name": "Traverse Surveying",
+        "aliases": [
+          "Traverse Surveying"
+        ]
+      },
+      {
+        "name": "Geodetic Surveying",
+        "aliases": [
+          "Geodetic Surveying"
+        ]
+      },
+      {
+        "name": "Cadastral Surveying",
+        "aliases": [
+          "Cadastral Surveying"
+        ]
+      },
+      {
+        "name": "Hydrographic Surveying",
+        "aliases": [
+          "Hydrographic Surveying"
+        ]
+      },
+      {
+        "name": "Topographic Surveying",
+        "aliases": [
+          "Topographic Surveying"
+        ]
+      },
+      {
+        "name": "Trimble GPS",
+        "aliases": [
+          "Trimble",
+          "Trimble GPS",
+          "Trimble Receiver"
+        ]
+      },
+      {
+        "name": "Leica Surveying",
+        "aliases": [
+          "Leica",
+          "Leica Geosystems",
+          "Leica Total Station"
+        ]
+      },
+      {
+        "name": "Topcon",
+        "aliases": [
+          "Topcon"
+        ]
+      },
+      {
+        "name": "Garmin GPS",
+        "aliases": [
+          "Garmin",
+          "Garmin GPS"
+        ]
+      }
+    ],
+    "cad_bim": [
+      {
+        "name": "AutoCAD",
+        "aliases": [
+          "AutoCAD",
+          "Autocad"
+        ]
+      },
+      {
+        "name": "Civil 3D",
+        "aliases": [
+          "Civil 3D",
+          "AutoCAD Civil 3D",
+          "Civil3D"
+        ]
+      },
+      {
+        "name": "MicroStation",
+        "aliases": [
+          "MicroStation",
+          "Microstation"
+        ]
+      },
+      {
+        "name": "Revit",
+        "aliases": [
+          "Revit",
+          "Autodesk Revit"
+        ]
+      },
+      {
+        "name": "ArchiCAD",
+        "aliases": [
+          "ArchiCAD",
+          "Archicad"
+        ]
+      },
+      {
+        "name": "SketchUp",
+        "aliases": [
+          "SketchUp",
+          "Sketchup"
+        ]
+      },
+      {
+        "name": "SolidWorks",
+        "aliases": [
+          "SolidWorks",
+          "Solidworks"
+        ]
+      },
+      {
+        "name": "BIM",
+        "aliases": [
+          "BIM",
+          "Building Information Modeling"
+        ]
+      },
+      {
+        "name": "CAD",
+        "aliases": [
+          "CAD",
+          "Computer-Aided Design"
+        ]
+      },
+      {
+        "name": "CAD/GIS Integration",
+        "aliases": [
+          "CAD/GIS Integration",
+          "CAD to GIS"
+        ]
+      },
+      {
+        "name": "LandXML",
+        "aliases": [
+          "LandXML"
+        ]
+      },
+      {
+        "name": "IFC",
+        "aliases": [
+          "IFC",
+          "Industry Foundation Classes"
+        ]
+      },
+      {
+        "name": "Bentley Map",
+        "aliases": [
+          "Bentley Map"
+        ]
+      }
+    ]
+  }
+}

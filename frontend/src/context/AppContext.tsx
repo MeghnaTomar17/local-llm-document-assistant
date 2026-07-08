@@ -5,8 +5,6 @@ import { listResumes } from "../services/resumeApi";
 import { listSessionResumes, listSessions, switchSession } from "../services/sessionApi";
 import type { BulkImportStatus, RecruiterSession, ResumeListItem, SessionsResponse, UUID } from "../types";
 
-const BULK_IMPORT_STALE_TIMEOUT_MS = 100_000;
-
 interface AppContextValue {
   resumes: ResumeListItem[];
   sessions: RecruiterSession[];
@@ -39,6 +37,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState("");
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [bulkImportStatus, setBulkImportStatus] = useState<BulkImportStatus>({
+    state: "IDLE",
     running: false,
     processed: 0,
     total: 0,
@@ -81,22 +80,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (notice) {
+      const timer = window.setTimeout(() => {
+        setNotice("");
+      }, 5500);
+      return () => window.clearTimeout(timer);
+    }
+  }, [notice]);
+
+  useEffect(() => {
+    setNotice("");
+  }, [activeSessionId]);
+
+  useEffect(() => {
     let cancelled = false;
 
     refreshBulkImportStatus().then((status) => {
-      if (!cancelled && status?.running) startBulkStatusPolling();
+      if (!cancelled && isBulkImportRunning(status)) {
+        startBulkStatusPolling();
+      }
     });
 
     function handleFocus() {
       refreshBulkImportStatus().then((status) => {
-        if (status?.running) startBulkStatusPolling();
+        if (isBulkImportRunning(status)) {
+          startBulkStatusPolling();
+        }
       });
     }
 
     window.addEventListener("focus", handleFocus);
+    window.addEventListener("visibilitychange", handleFocus);
     return () => {
       cancelled = true;
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("visibilitychange", handleFocus);
       stopBulkStatusPolling();
     };
   }, []);
@@ -106,7 +124,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const status = await getBulkImportStatus();
       setBulkImportStatus(status);
 
-      const signature = `${status.running}:${status.processed}:${status.total}:${status.failed}:${status.updated_at || ""}`;
+      const signature = `${status.state || ""}:${status.running}:${status.processed}:${status.total}:${status.failed}:${status.duplicates || 0}:${status.updated_at || ""}`;
       const hasProgress = status.total > 0 && signature !== lastImportSignature.current;
 
       if (hasProgress) {
@@ -114,9 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refresh().catch((err) => setError(getApiError(err)));
       }
 
-      if (!status.running) {
-        stopBulkStatusPolling();
-      } else if (isBulkImportStale(status)) {
+      if (!isBulkImportRunning(status)) {
         stopBulkStatusPolling();
       }
 
@@ -131,9 +147,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   function startBulkStatusPolling() {
     if (statusPollRef.current != null) return;
     statusPollRef.current = window.setInterval(() => {
-      refreshBulkImportStatus().then((status) => {
-        if (!status?.running) stopBulkStatusPolling();
-      });
+      refreshBulkImportStatus();
     }, 3000);
   }
 
@@ -192,7 +206,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refresh: async () => {
         await refresh();
         const status = await refreshBulkImportStatus();
-        if (status?.running) startBulkStatusPolling();
+        if (isBulkImportRunning(status)) startBulkStatusPolling();
       },
       refreshBulkImportStatus,
       setNotice,
@@ -217,7 +231,7 @@ function firstSessionId(data: SessionsResponse): UUID | null {
   return first?.session_id || first?.id || null;
 }
 
-function isBulkImportStale(status: BulkImportStatus) {
-  const updatedAt = status.updated_at ? new Date(status.updated_at).getTime() : 0;
-  return Boolean(status.running && updatedAt && Date.now() - updatedAt > BULK_IMPORT_STALE_TIMEOUT_MS);
+function isBulkImportRunning(status: BulkImportStatus | null | undefined) {
+  if (!status) return false;
+  return status.state === "RUNNING" || Boolean(status.running && !status.interrupted);
 }

@@ -1,17 +1,33 @@
 from __future__ import annotations
 
 import logging
+from collections import OrderedDict
+import re
+from threading import RLock
+import time
 from uuid import UUID
 
 from backend.llm_sql.schemas import RecruiterResumeResult, RecruiterSearchResponse
 from backend.llm_sql.services.sql_executor import SQLExecutor
-from backend.llm_sql.services.sql_generator import SQLGenerator
-from backend.llm_sql.services.sql_validator import SQLValidator
+from backend.llm_sql.services.sql_generator import SQLGenerationResult, SQLGenerator
+from backend.llm_sql.services.sql_validator import SQLValidationResult, SQLValidator, get_database_schema_metadata
 from database.crud import create_search_history
 
 
 logger = logging.getLogger(__name__)
 SEARCH_MODEL_USED = "qwen2.5-coder"
+
+_sql_cache: OrderedDict[str, tuple[float, str, SQLValidationResult]] = OrderedDict()
+_sql_cache_lock = RLock()
+SQL_CACHE_TTL = 30.0
+SQL_CACHE_MAX_SIZE = 128
+
+
+def normalize_question(q: str) -> str:
+    q = str(q or "").strip().lower()
+    q = re.sub(r"[?.,!]", "", q)
+    q = re.sub(r"\s+", " ", q).strip()
+    return q
 
 
 class SQLSearchValidationError(ValueError):
@@ -38,16 +54,26 @@ class RecruiterSearchService:
 
     def search(self, question: str, session_id: UUID | str | None = None) -> RecruiterSearchResponse:
         clean_question = str(question or "").strip()
-        logger.info("Starting recruiter search query=%s", clean_question)
+        normalized_q = normalize_question(clean_question)
+        logger.info("Starting recruiter search query=%s normalized=%s", clean_question, normalized_q)
 
-        generation = self.generator.generate(clean_question)
-        logger.info(
-            "SQL generation completed latency_seconds=%.3f sql=%s",
-            generation.latency_seconds,
-            generation.sql,
-        )
+        cached_generation = self._cached_generation(normalized_q)
 
-        validation = self.validator.validate(generation.sql)
+        if cached_generation:
+            generation = cached_generation
+            validation = generation.validation
+            logger.info("SQL cache hit for query=%s sql=%s", clean_question, generation.sql)
+        else:
+            generation = self.generator.generate(clean_question)
+            logger.info(
+                "SQL generation completed latency_seconds=%.3f sql=%s",
+                generation.latency_seconds,
+                generation.sql,
+            )
+            validation = generation.validation
+            if validation.is_valid:
+                self._cache_generation(normalized_q, generation.sql, validation)
+
         logger.info(
             "SQL validation completed is_valid=%s errors=%s",
             validation.is_valid,
@@ -83,6 +109,41 @@ class RecruiterSearchService:
         self._store_history(response, session_id)
 
         return response
+
+    @staticmethod
+    def _cached_generation(normalized_question: str) -> SQLGenerationResult | None:
+        if not normalized_question:
+            return None
+        now = time.time()
+        with _sql_cache_lock:
+            cached = _sql_cache.get(normalized_question)
+            if not cached:
+                return None
+
+            cached_at, sql, validation = cached
+            if now - cached_at >= SQL_CACHE_TTL:
+                del _sql_cache[normalized_question]
+                return None
+
+            _sql_cache.move_to_end(normalized_question)
+            generation = SQLGenerationResult(
+                sql=sql,
+                validation=validation,
+                model=SEARCH_MODEL_USED,
+                latency_seconds=0.0,
+            )
+            return generation
+
+    @staticmethod
+    def _cache_generation(normalized_question: str, sql: str, validation: SQLValidationResult) -> None:
+        if not normalized_question or not validation.is_valid:
+            return
+
+        with _sql_cache_lock:
+            _sql_cache[normalized_question] = (time.time(), sql, validation)
+            _sql_cache.move_to_end(normalized_question)
+            while len(_sql_cache) > SQL_CACHE_MAX_SIZE:
+                _sql_cache.popitem(last=False)
 
     @staticmethod
     def _store_history(response: RecruiterSearchResponse, session_id: UUID | str | None) -> None:
@@ -122,3 +183,22 @@ class RecruiterSearchService:
                 if key in recruiter_fields
             }
         )
+
+
+_recruiter_search_service_instance = None
+_recruiter_search_service_lock = RLock()
+
+
+def get_recruiter_search_service() -> RecruiterSearchService:
+    global _recruiter_search_service_instance
+    if _recruiter_search_service_instance is None:
+        with _recruiter_search_service_lock:
+            if _recruiter_search_service_instance is None:
+                _recruiter_search_service_instance = RecruiterSearchService()
+    return _recruiter_search_service_instance
+
+
+def warm_recruiter_search_service() -> RecruiterSearchService:
+    service = get_recruiter_search_service()
+    get_database_schema_metadata()
+    return service

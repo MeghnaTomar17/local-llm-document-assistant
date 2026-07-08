@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+SQLALCHEMY_ECHO = os.getenv("SQLALCHEMY_ECHO", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL not found in .env")
@@ -16,7 +17,7 @@ if not DATABASE_URL:
 # SQLAlchemy Engine
 engine = create_engine(
     DATABASE_URL,
-    echo=True,          # Shows SQL queries in terminal (good for development)
+    echo=SQLALCHEMY_ECHO,
     future=True
 )
 

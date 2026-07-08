@@ -4,8 +4,7 @@ import { ResumeDetailsPanel } from "../components/resume/ResumeDetailsPanel";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
-import { Loader } from "../components/ui/Loader";
-import { SkeletonRows } from "../components/ui/Skeleton";
+import { SkeletonBlock, SkeletonRows } from "../components/ui/Skeleton";
 import { Table, type TableColumn } from "../components/ui/Table";
 import { usePagination } from "../hooks/usePagination";
 import { useAppData } from "../context/AppContext";
@@ -56,10 +55,10 @@ export function SearchPage() {
     const trimmed = query.trim();
     if (!trimmed || loading) return;
     setLoading(true);
-    setSearchStep("Generating Search Query...");
+    setSearchStep("Searching candidates...");
     setError("");
     setSelected(null);
-    const timer = window.setTimeout(() => setSearchStep("Searching Candidates..."), 650);
+    const timer = window.setTimeout(() => setSearchStep("Finding matching resumes..."), 650);
     try {
       setResponse(await recruiterSearch(trimmed));
       setPage(1);
@@ -179,15 +178,7 @@ export function SearchPage() {
       </section>
 
       {error && <div className="error-banner">{error}</div>}
-      {loading && (
-        <section className="panel search-loading-panel fade-in">
-          <div className="section-title">
-            <h3>Searching Candidates</h3>
-            <Loader label={searchStep || "Searching Candidates..."} />
-          </div>
-          <SkeletonRows count={6} />
-        </section>
-      )}
+      {loading && <SearchLoadingState message={searchStep || "Searching candidates..."} />}
 
       {response && !loading && (
         <section className="panel">
@@ -265,6 +256,43 @@ function DecisionBadge({ decision }: { decision?: string | null }) {
   if (decision === "REJECTED") return <Badge tone="danger">Rejected</Badge>;
   if (decision === "ON_HOLD") return <Badge tone="info">On Hold</Badge>;
   return <Badge tone="warning">Pending</Badge>;
+}
+
+function SearchLoadingState({ message }: { message: string }) {
+  return (
+    <section className="panel search-loading-panel fade-in" aria-busy="true">
+      <div className="section-title">
+        <div>
+          <h3>Searching Candidates</h3>
+          <span>{message}</span>
+        </div>
+        <div className="search-live-indicator">
+          <span />
+          <strong>{message}</strong>
+        </div>
+      </div>
+      <div className="search-skeleton-table" aria-hidden="true">
+        <div className="search-skeleton-head">
+          {["Candidate", "Email", "Phone", "Skills", "Decision"].map((label) => (
+            <SkeletonBlock className="search-skeleton-heading" key={label} />
+          ))}
+        </div>
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div className="search-skeleton-row" key={index}>
+            <SkeletonBlock className="skeleton-line skeleton-line-strong" />
+            <SkeletonBlock className="skeleton-line skeleton-line-medium" />
+            <SkeletonBlock className="skeleton-line skeleton-line-short" />
+            <div className="search-skeleton-chips">
+              <SkeletonBlock className="skeleton-pill" />
+              <SkeletonBlock className="skeleton-pill" />
+              <SkeletonBlock className="skeleton-pill" />
+            </div>
+            <SkeletonBlock className="skeleton-pill" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function SkillChips({ value }: { value: unknown }) {

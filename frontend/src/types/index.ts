@@ -129,14 +129,27 @@ export interface ChatMessage {
 }
 
 export interface BulkImportStatus {
+  state?: "IDLE" | "RUNNING" | "COMPLETED" | "INTERRUPTED";
   running: boolean;
   processed: number;
   total: number;
   failed: number;
+  duplicates?: number;
+  duplicate_warnings?: Array<{
+    file_name: string;
+    candidate_name: string;
+    email: string;
+    phone: string;
+    reason: string;
+    timestamp: string;
+  }>;
   current_file?: string | null;
   last_completed_file?: string | null;
   message?: string | null;
   started_at?: string | null;
   updated_at?: string | null;
   finished_at?: string | null;
+  interrupted?: boolean;
+  interrupted_at?: string | null;
+  pid?: number | null;
 }

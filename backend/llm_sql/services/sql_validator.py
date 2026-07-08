@@ -2,6 +2,36 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import re
+from threading import RLock
+from database.connection import engine
+from sqlalchemy import inspect
+
+_schema_cache_lock = RLock()
+_validation_cache_lock = RLock()
+_cached_schema_metadata: dict[str, set[str]] = {}
+_successful_validation_cache: dict[str, SQLValidationResult] = {}
+SUCCESSFUL_VALIDATION_CACHE_MAX_SIZE = 512
+
+
+def get_resumes_columns() -> set[str]:
+    return get_database_schema_metadata().get("resumes", set())
+
+
+def get_database_schema_metadata() -> dict[str, set[str]]:
+    with _schema_cache_lock:
+        if _cached_schema_metadata:
+            return _cached_schema_metadata
+
+        try:
+            inspector = inspect(engine)
+            _cached_schema_metadata["resumes"] = {
+                column["name"].lower()
+                for column in inspector.get_columns("resumes")
+            }
+        except Exception:
+            _cached_schema_metadata["resumes"] = set()
+
+        return _cached_schema_metadata
 
 
 FORBIDDEN_SQL_KEYWORDS = (
@@ -76,6 +106,10 @@ class SQLValidator:
         """Return a structured validation result for generated SQL."""
 
         normalized_sql = self._normalize(sql)
+        cached_result = self._cached_successful_validation(normalized_sql)
+        if cached_result:
+            return cached_result
+
         errors: list[str] = []
 
         if not normalized_sql:
@@ -128,11 +162,28 @@ class SQLValidator:
         if not self._is_aggregate_query(normalized_sql) and not self._has_limit(normalized_sql):
             errors.append("Non-aggregate recruiter search queries must include LIMIT 100.")
 
-        return SQLValidationResult(
+        result = SQLValidationResult(
             is_valid=not errors,
             sql=normalized_sql,
             errors=errors,
         )
+        if result.is_valid:
+            self._cache_successful_validation(normalized_sql, result)
+        return result
+
+    @staticmethod
+    def _cached_successful_validation(normalized_sql: str) -> SQLValidationResult | None:
+        with _validation_cache_lock:
+            return _successful_validation_cache.get(normalized_sql)
+
+    @staticmethod
+    def _cache_successful_validation(normalized_sql: str, result: SQLValidationResult) -> None:
+        if not result.is_valid:
+            return
+        with _validation_cache_lock:
+            if len(_successful_validation_cache) >= SUCCESSFUL_VALIDATION_CACHE_MAX_SIZE:
+                _successful_validation_cache.pop(next(iter(_successful_validation_cache)))
+            _successful_validation_cache[normalized_sql] = result
 
     @staticmethod
     def _normalize(sql: str) -> str:
@@ -271,10 +322,13 @@ class SQLValidator:
 
     def _unknown_selected_columns(self, sql: str) -> set[str]:
         selected_columns = self._selected_columns(sql)
+        allowed = get_resumes_columns()
+        if not allowed:
+            allowed = ALLOWED_SELECT_COLUMNS | INTERNAL_COLUMNS
         return {
             column
             for column in selected_columns
-            if column not in ALLOWED_SELECT_COLUMNS and column not in INTERNAL_COLUMNS
+            if column not in allowed
         }
 
     def _selected_internal_columns(self, sql: str) -> set[str]:

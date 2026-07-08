@@ -14,9 +14,11 @@ export function DashboardPage() {
   const onHold = resumes.filter((resume) => resume.hr_decision === "ON_HOLD").length;
   const accepted = resumes.filter((resume) => resume.hr_decision === "ACCEPTED").length;
   const rejected = resumes.filter((resume) => resume.hr_decision === "REJECTED").length;
-  const pendingCount = resumes.filter((resume) => !resume.hr_decision || resume.hr_decision === "PENDING").length;
+  const pending = resumes.filter((resume) => !resume.hr_decision || resume.hr_decision === "PENDING").length;
   const pendingCandidates = [...resumes]
     .filter((resume) => !resume.hr_decision || resume.hr_decision === "PENDING")
+    .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime());
+  const recent = [...resumes]
     .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime())
     .slice(0, 8);
 
@@ -47,7 +49,7 @@ export function DashboardPage() {
         <Metric icon={<FileClock size={19} />} label="On hold" value={onHold} />
         <Metric icon={<CheckCircle2 size={19} />} label="Accepted" value={accepted} />
         <Metric icon={<AlertTriangle size={19} />} label="Rejected" value={rejected} />
-        <Metric icon={<FileClock size={19} />} label="Pending candidates" value={pendingCount} />
+        <Metric icon={<FileClock size={19} />} label="Pending candidates" value={pending} />
         <Metric icon={<CheckCircle2 size={19} />} label="Sessions" value={sessions.length} />
       </section>
 

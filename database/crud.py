@@ -128,7 +128,15 @@ def normalize_name(value: str | None) -> str:
 
 
 def normalize_phone(value: str | None) -> str:
-    return "".join(char for char in str(value or "") if char.isdigit())
+    digits = "".join(char for char in str(value or "") if char.isdigit())
+
+    if len(digits) == 12 and digits.startswith("91"):
+        return digits[2:]
+
+    if len(digits) == 11 and digits.startswith("0"):
+        return digits[1:]
+
+    return digits
 
 
 def find_duplicate_candidate(candidate_name: str | None, email: str | None, phone_number: str | None):

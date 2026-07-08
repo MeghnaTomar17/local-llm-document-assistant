@@ -22,7 +22,6 @@ const quickActions = [
   ["Summary", "Summarize the resume."],
   ["Contact", "Show contact information from the resume."],
   ["Skills", "Show skills from the resume."],
-  ["Technical Skills", "Show technical skills from the resume."],
   ["Education", "Show education from the resume."],
   ["Experience", "Show experience from the resume."],
   ["Projects", "Show projects from the resume."],

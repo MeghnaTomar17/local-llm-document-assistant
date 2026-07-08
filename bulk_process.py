@@ -8,7 +8,8 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from backend.services.bulk_status import finish_bulk_import, start_bulk_import, update_bulk_progress
+from backend.services.bulk_status import finish_bulk_import, start_bulk_import, update_bulk_progress, utc_now, mark_bulk_import_interrupted
+from backend.services.resume_service import DuplicateCandidateError
 from backend.services.document_service import document_service
 
 
@@ -112,7 +113,7 @@ def append_report(name, status, resume_id="", elapsed="", error=""):
         )
 
 
-# ---------------------------------------------------------------------
+
 # Resume Processing
 # ---------------------------------------------------------------------
 
@@ -124,6 +125,8 @@ def process_resumes(resumes, session_id=None, group_session=False):
 
     processed = 0
     failed = 0
+    duplicates = 0
+    duplicate_warnings = []
 
     overall_start = time.time()
     start_bulk_import(total)
@@ -141,85 +144,148 @@ def process_resumes(resumes, session_id=None, group_session=False):
         f"Session: {active_session_id if active_session_id else 'one persistent session per unique resume'}\n"
     )
 
-    for resume in tqdm(
-        resumes,
-        desc="Processing",
-        unit="resume",
-    ):
+    try:
+        for resume in tqdm(
+            resumes,
+            desc="Processing",
+            unit="resume",
+        ):
 
-        start = time.time()
-        update_bulk_progress(
-            processed=processed + failed,
-            total=total,
-            failed=failed,
-            current_file=resume.name,
-            message=f"Processing {resume.name}",
-        )
-
-        try:
-
-            session = document_service.add_document(
-                file_path=resume,
-                display_name=resume.name,
-                session_id=active_session_id if group_session else None,
-            )
-
-            document = session.document
-
-            resume_id = document.get("resume_id", "")
-
-            elapsed = round(time.time() - start, 2)
-
-            processed += 1
-
-            append_report(
-                resume.name,
-                "Success",
-                resume_id,
-                elapsed,
-                "",
-            )
-
-            logger.info(
-                "%s processed successfully (%s)",
-                resume.name,
-                resume_id,
-            )
+            start = time.time()
             update_bulk_progress(
-                processed=processed + failed,
+                processed=processed + failed + duplicates,
                 total=total,
                 failed=failed,
-                current_file="",
-                last_completed_file=resume.name,
-                message=f"Processed {resume.name}",
+                duplicates=duplicates,
+                duplicate_warnings=duplicate_warnings,
+                current_file=resume.name,
+                message=f"Processing {resume.name}",
             )
 
-        except Exception as e:
+            try:
 
-            elapsed = round(time.time() - start, 2)
+                session = document_service.add_document(
+                    file_path=resume,
+                    display_name=resume.name,
+                    session_id=active_session_id if group_session else None,
+                )
 
-            failed += 1
+                document = session.document
 
-            append_report(
-                resume.name,
-                "Failed",
-                "",
-                elapsed,
-                str(e),
-            )
+                resume_id = document.get("resume_id", "")
 
-            logger.exception(
-                "Failed processing %s",
-                resume.name,
-            )
-            update_bulk_progress(
-                processed=processed + failed,
-                total=total,
-                failed=failed,
-                current_file="",
-                last_completed_file=resume.name,
-                message=f"Failed {resume.name}",
-            )
+                elapsed = round(time.time() - start, 2)
+
+                processed += 1
+
+                append_report(
+                    resume.name,
+                    "Success",
+                    resume_id,
+                    elapsed,
+                    "",
+                )
+
+                logger.info(
+                    "%s processed successfully (%s)",
+                    resume.name,
+                    resume_id,
+                )
+                update_bulk_progress(
+                    processed=processed + failed + duplicates,
+                    total=total,
+                    failed=failed,
+                    duplicates=duplicates,
+                    duplicate_warnings=duplicate_warnings,
+                    current_file="",
+                    last_completed_file=resume.name,
+                    message=f"Processed {resume.name}",
+                )
+
+            except DuplicateCandidateError as e:
+
+                elapsed = round(time.time() - start, 2)
+
+                duplicates += 1
+
+                candidate_name = e.payload.get("candidate_name") or "Unknown"
+                email = e.payload.get("email") or "Unknown"
+                phone = e.payload.get("phone") or "Unknown"
+                reason = e.payload.get("reason") or "Duplicate candidate matching criteria"
+
+                warning_info = {
+                    "file_name": resume.name,
+                    "candidate_name": candidate_name,
+                    "email": email,
+                    "phone": phone,
+                    "reason": reason,
+                    "timestamp": utc_now(),
+                }
+                duplicate_warnings.append(warning_info)
+
+                append_report(
+                    resume.name,
+                    "Skipped (Duplicate)",
+                    e.payload.get("existing_resume_id", ""),
+                    elapsed,
+                    f"Duplicate: {reason}",
+                )
+
+                logger.warning(
+                    "%s skipped as duplicate (%s - %s)",
+                    resume.name,
+                    candidate_name,
+                    reason,
+                )
+                update_bulk_progress(
+                    processed=processed + failed + duplicates,
+                    total=total,
+                    failed=failed,
+                    duplicates=duplicates,
+                    duplicate_warnings=duplicate_warnings,
+                    current_file="",
+                    last_completed_file=resume.name,
+                    message=f"Skipped duplicate {resume.name}",
+                )
+
+            except Exception as e:
+
+                elapsed = round(time.time() - start, 2)
+
+                failed += 1
+
+                append_report(
+                    resume.name,
+                    "Failed",
+                    "",
+                    elapsed,
+                    str(e),
+                )
+
+                logger.exception(
+                    "Failed processing %s",
+                    resume.name,
+                )
+                update_bulk_progress(
+                    processed=processed + failed + duplicates,
+                    total=total,
+                    failed=failed,
+                    duplicates=duplicates,
+                    duplicate_warnings=duplicate_warnings,
+                    current_file="",
+                    last_completed_file=resume.name,
+                    message=f"Failed {resume.name}",
+                )
+    except KeyboardInterrupt:
+        logger.error("Bulk processing interrupted by user (KeyboardInterrupt).")
+        mark_bulk_import_interrupted("Bulk import was interrupted by user (KeyboardInterrupt).")
+        print("\n\nBulk processing interrupted by user.")
+        raise
+    except Exception as e:
+        logger.exception("Bulk processing failed unexpectedly.")
+        mark_bulk_import_interrupted(f"Bulk import failed unexpectedly: {e}")
+        print(f"\n\nBulk processing failed unexpectedly: {e}")
+        raise
 
     total_time = time.time() - overall_start
 
@@ -233,6 +299,7 @@ def process_resumes(resumes, session_id=None, group_session=False):
 
     print(f"Total Resumes      : {total}")
     print(f"Successfully Added : {processed}")
+    print(f"Duplicates Skipped : {duplicates}")
     print(f"Failed             : {failed}")
     print(f"Success Rate       : {success_rate:.2f}%")
     print(f"Total Time         : {total_time:.2f} seconds")
@@ -241,13 +308,11 @@ def process_resumes(resumes, session_id=None, group_session=False):
     print(f"\nCSV Report : {REPORT_FILE}")
     print(f"Log File   : {LOG_FILE}")
     print(f"Session    : {active_session_id if active_session_id else 'one per unique resume'}")
-    finish_bulk_import(processed=processed + failed, total=total, failed=failed)
+    finish_bulk_import(processed=processed + failed + duplicates, total=total, failed=failed, duplicates=duplicates)
 
 
 def datetime_label():
     return time.strftime("%Y-%m-%d %H:%M:%S")
-
-
 # ---------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------

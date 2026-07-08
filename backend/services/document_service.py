@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 import logging
 from pathlib import Path
 import shutil
@@ -136,7 +136,7 @@ class DocumentService:
                         errors.append(
                             {
                                 "file_name": display_name or Path(file_path).name,
-                                "error": str(exc),
+                                "error": "Failed to process resume.",
                             }
                         )
 
@@ -169,7 +169,7 @@ class DocumentService:
                 try:
                     existing = get_resume_by_hash(self.resume_hash(file_path))
                     if existing:
-                        raise DuplicateCandidateError(existing)
+                        raise DuplicateCandidateError(existing, reason="File Hash")
 
                     document = self.process_resume_for_session(
                         session,
@@ -185,7 +185,7 @@ class DocumentService:
                     errors.append(
                         {
                             "file_name": display_name or Path(file_path).name,
-                            "error": str(exc),
+                            "error": "Failed to process resume.",
                         }
                     )
 
@@ -200,7 +200,7 @@ class DocumentService:
         existing = get_resume_by_hash(self.resume_hash(file_path))
 
         if existing:
-            raise DuplicateCandidateError(existing)
+            raise DuplicateCandidateError(existing, reason="File Hash")
 
         session = ResumeSession("pending", create_vector_store())
         document = process_document(
@@ -209,10 +209,12 @@ class DocumentService:
             reset_store=True,
             document_name=display_name,
         )
+        
         metadata = self.metadata_service.add_resume(
             document["name"],
             document.get("text", ""),
         )
+        
         resume = persist_resume_metadata(
             Path(file_path),
             document["name"],
@@ -223,6 +225,7 @@ class DocumentService:
         session.session_id = str(resume.session_id)
         document["metadata"] = metadata
         document["resume_id"] = str(resume.id)
+        
         save_resume_chunks(resume.id, document.get("chunks", []))
         session.add_document(document)
 
@@ -242,10 +245,12 @@ class DocumentService:
             reset_store=reset_store,
             document_name=display_name,
         )
+        
         metadata = self.metadata_service.add_resume(
             document["name"],
             document.get("text", ""),
         )
+        
         resume = persist_resume_metadata(
             Path(file_path),
             document["name"],
@@ -254,6 +259,7 @@ class DocumentService:
         )
         document["metadata"] = metadata
         document["resume_id"] = str(resume.id)
+        
         save_resume_chunks(resume.id, document.get("chunks", []))
         session.add_document(document)
         return document

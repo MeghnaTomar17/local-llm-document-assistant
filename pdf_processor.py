@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+import logging
 import os
 import re
 import subprocess
@@ -16,6 +17,8 @@ from docx import Document
 from pypdf import PdfReader
 
 
+logger = logging.getLogger(__name__)
+
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 160
@@ -24,7 +27,7 @@ DEFAULT_TOP_K = 2
 MAX_MEMORY_MESSAGES = 3
 MIN_GOOD_EXTRACTION_CHARS = 350
 MIN_READABLE_WORD_RATIO = 0.55
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.2:3b")
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 PDF_EXTRACTION_DEBUG = os.getenv("PDF_EXTRACTION_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
@@ -234,7 +237,7 @@ def _extract_pdf_text(file_path):
         try:
             result = extractor(file_path)
         except Exception as exc:
-            print(f"PDF extraction via {method} failed: {exc}")
+            logger.debug("PDF extraction via %s failed: %s", method, exc)
             continue
 
         result["extraction_method"] = method
@@ -258,7 +261,7 @@ def _extract_pdf_text(file_path):
                 if not ocr_result["quality"]["is_poor"]:
                     break
             except Exception as exc:
-                print(f"OCR fallback via {ocr_method} skipped or failed: {exc}")
+                logger.debug("OCR fallback via %s skipped or failed: %s", ocr_method, exc)
 
     if best_result:
         return best_result
@@ -423,20 +426,25 @@ def debug_pdf_blocks(page_num, blocks, layout):
     if not PDF_EXTRACTION_DEBUG:
         return
 
-    print("\n" + "=" * 50)
-    print(
-        f"PyMuPDF page {page_num} layout={layout.get('type')} "
-        f"split_x={layout.get('split_x'):.1f} header_bottom={layout.get('header_bottom'):.1f}"
+    logger.debug(
+        "PyMuPDF page %s layout=%s split_x=%.1f header_bottom=%.1f",
+        page_num,
+        layout.get("type"),
+        layout.get("split_x"),
+        layout.get("header_bottom"),
     )
     for index, block in enumerate(sort_blocks_top_left(blocks), start=1):
         preview = re.sub(r"\s+", " ", block["text"])[:90]
-        print(
-            f"Block {index}: "
-            f"x0={block['x0']:.1f}, y0={block['y0']:.1f}, "
-            f"x1={block['x1']:.1f}, y1={block['y1']:.1f}, "
-            f"w={block['width']:.1f} | {preview}"
+        logger.debug(
+            "Block %s: x0=%.1f, y0=%.1f, x1=%.1f, y1=%.1f, w=%.1f | %s",
+            index,
+            block["x0"],
+            block["y0"],
+            block["x1"],
+            block["y1"],
+            block["width"],
+            preview,
         )
-    print("=" * 50)
 
 
 def _extract_pdf_text_pdfplumber(file_path):
@@ -1110,13 +1118,11 @@ def process_document(file_path, vector_store=None, reset_store=True, document_na
     path = Path(file_path)
     extraction = extract_text(path)
     text = extraction["text"]
-    print("\n" + "=" * 80)
-    print("EXTRACTED TEXT")
-    print("=" * 80)
-    print(console_safe_text(text[:5000]))   # first 5000 chars
-    print("=" * 80)
+    if PDF_EXTRACTION_DEBUG:
+        logger.debug("Extracted text preview for %s:\n%s", path.name, console_safe_text(text[:5000]))
     document_id = uuid.uuid4().hex
     display_name = document_name or path.name
+    
     chunks = create_chunks(text, document_id=document_id, document_name=display_name)
     log_generated_chunks(display_name, text, chunks)
 
@@ -1133,6 +1139,7 @@ def process_document(file_path, vector_store=None, reset_store=True, document_na
         "extraction_method": extraction.get("extraction_method", "docx" if path.suffix.lower() == ".docx" else "unknown"),
         "extraction_quality": extraction.get("quality", evaluate_extraction_quality(text)),
     }
+    
     build_vector_index(document, vector_store=vector_store)
     return document
 
@@ -1379,13 +1386,17 @@ def normalize_for_match(value):
 
 
 def log_generated_chunks(document_name, extracted_text, chunks):
+    if not PDF_EXTRACTION_DEBUG:
+        return
     has_projects = bool(re.search(r"\bprojects?\b", extracted_text, flags=re.IGNORECASE))
-    print("\n" + "=" * 50)
-    print(f"Resume parsed: {document_name}")
-    print(f"Extracted text contains Projects heading/text: {has_projects}")
-    print(f"Generated chunks: {len(chunks)}")
+    logger.debug(
+        "Resume parsed: %s | projects_detected=%s | generated_chunks=%s",
+        document_name,
+        has_projects,
+        len(chunks),
+    )
     for chunk in chunks:
-        print(
+        logger.debug(
             "Chunk metadata | "
             f"section={chunk.get('section')} | "
             f"title={chunk.get('title')} | "
@@ -1393,7 +1404,6 @@ def log_generated_chunks(document_name, extracted_text, chunks):
             f"chunk_id={chunk.get('chunk_id')} | "
             f"size={chunk.get('size')}"
         )
-    print("=" * 50)
 
 
 def build_prompt(question, retrieval, chat_history=None):
@@ -1442,11 +1452,12 @@ def ask_llm(question, document_or_documents, chat_history=None, top_k=None, vect
         vector_store=vector_store,
     )
     prompt = build_prompt(question, retrieval, chat_history)
-    print("\n" + "="*50)
-    print("Prompt Size:", len(prompt))
-    print("Retrieved Chunks:", retrieval["chunk_count"])
-    print("Context Size:", retrieval["context_size"])
-    print("="*50)
+    logger.debug(
+        "LLM prompt prepared | prompt_size=%s retrieved_chunks=%s context_size=%s",
+        len(prompt),
+        retrieval["chunk_count"],
+        retrieval["context_size"],
+    )
     response = requests.post(
         OLLAMA_URL,
         json={

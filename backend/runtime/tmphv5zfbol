@@ -1,0 +1,51 @@
+{
+  "state": "RUNNING",
+  "running": true,
+  "processed": 4,
+  "total": 116,
+  "failed": 0,
+  "duplicates": 4,
+  "duplicate_warnings": [
+    {
+      "file_name": "Abinesh   CV.pdf",
+      "candidate_name": "Abinesh",
+      "email": "abinesh01m@gmail.com",
+      "phone": "9003340263",
+      "reason": "File Hash",
+      "timestamp": "2026-07-08T15:38:01.968513+00:00"
+    },
+    {
+      "file_name": "Ajay 1.pdf",
+      "candidate_name": "Ajay Raju",
+      "email": "ajayzeinz@gmail.com",
+      "phone": "+91 75025 68889",
+      "reason": "File Hash",
+      "timestamp": "2026-07-08T15:38:02.044865+00:00"
+    },
+    {
+      "file_name": "Ajay_Resume.pdf",
+      "candidate_name": "Ajay Gopan G",
+      "email": "ajaygops320@gmail.com",
+      "phone": "9495464131",
+      "reason": "File Hash",
+      "timestamp": "2026-07-08T15:38:02.101686+00:00"
+    },
+    {
+      "file_name": "Akila_GIS Developer_CV 1.docx",
+      "candidate_name": "Akila L",
+      "email": "Unknown",
+      "phone": "Unknown",
+      "reason": "File Hash",
+      "timestamp": "2026-07-08T15:38:02.198144+00:00"
+    }
+  ],
+  "current_file": "AmarResume.docx",
+  "last_completed_file": "",
+  "message": "Processing AmarResume.docx",
+  "started_at": "2026-07-08T15:38:01.682569+00:00",
+  "updated_at": "2026-07-08T15:38:02.214300+00:00",
+  "finished_at": null,
+  "interrupted": false,
+  "interrupted_at": null,
+  "pid": 36432
+}

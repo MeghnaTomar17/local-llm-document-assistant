@@ -16,19 +16,23 @@ from database.crud import (
     list_resumes,
     save_resume,
     update_resume_metadata,
+    normalize_name,
+    normalize_email,
+    normalize_phone,
 )
 from database.models import Resume
 from backend.services.session_service import ensure_resume_workspace, ensure_session
 
 
 class DuplicateCandidateError(ValueError):
-    def __init__(self, resume: Resume):
+    def __init__(self, resume: Resume, reason: str = "Duplicate candidate matching criteria"):
         self.payload = {
             "duplicate": True,
             "candidate_name": resume.candidate_name,
             "email": resume.email,
             "phone": resume.phone_number,
             "existing_resume_id": str(resume.id),
+            "reason": reason,
             "message": "Candidate already exists.",
         }
         super().__init__(self.payload["message"])
@@ -109,7 +113,25 @@ def persist_resume_metadata(
         payload.get("phone_number"),
     )
     if duplicate:
-        raise DuplicateCandidateError(duplicate)
+        norm_name = normalize_name(payload.get("candidate_name"))
+        norm_email = normalize_email(payload.get("email"))
+        norm_phone = normalize_phone(payload.get("phone_number"))
+        
+        exist_name = normalize_name(duplicate.candidate_name)
+        exist_email = normalize_email(duplicate.email)
+        exist_phone = normalize_phone(duplicate.phone_number)
+        
+        reasons = []
+        if norm_email and exist_email == norm_email:
+            reasons.append("Email")
+        if norm_phone and exist_phone == norm_phone:
+            reasons.append("Phone")
+        if norm_name and exist_name == norm_name:
+            if not reasons:
+                reasons.append("Name")
+                
+        reason_str = " + ".join(reasons) if reasons else "Metadata"
+        raise DuplicateCandidateError(duplicate, reason=reason_str)
 
     if not session_id:
         session_title = payload["candidate_name"] or payload["original_file_name"]
