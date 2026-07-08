@@ -14,7 +14,9 @@ export function DashboardPage() {
   const onHold = resumes.filter((resume) => resume.hr_decision === "ON_HOLD").length;
   const accepted = resumes.filter((resume) => resume.hr_decision === "ACCEPTED").length;
   const rejected = resumes.filter((resume) => resume.hr_decision === "REJECTED").length;
-  const recent = [...resumes]
+  const pendingCount = resumes.filter((resume) => !resume.hr_decision || resume.hr_decision === "PENDING").length;
+  const pendingCandidates = [...resumes]
+    .filter((resume) => !resume.hr_decision || resume.hr_decision === "PENDING")
     .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime())
     .slice(0, 8);
 
@@ -45,18 +47,19 @@ export function DashboardPage() {
         <Metric icon={<FileClock size={19} />} label="On hold" value={onHold} />
         <Metric icon={<CheckCircle2 size={19} />} label="Accepted" value={accepted} />
         <Metric icon={<AlertTriangle size={19} />} label="Rejected" value={rejected} />
-        <Metric icon={<FileClock size={19} />} label="Recent uploads" value={recent.length} />
+        <Metric icon={<FileClock size={19} />} label="Pending candidates" value={pendingCount} />
         <Metric icon={<CheckCircle2 size={19} />} label="Sessions" value={sessions.length} />
       </section>
 
       <section className="panel">
         <div className="section-title">
-          <h3>Recent uploads</h3>
+          <h3>Pending Candidates</h3>
+          <span>Candidates waiting for a hiring decision.</span>
         </div>
-        {recent.length ? (
-          <Table columns={columns} rows={recent} getRowKey={(row, index) => row.id || String(index)} />
+        {pendingCandidates.length ? (
+          <Table columns={columns} rows={pendingCandidates} getRowKey={(row, index) => row.id || String(index)} />
         ) : (
-          <EmptyState icon={<FileText size={26} />} title="No resumes have been uploaded yet." description="Drag and drop resumes from the Sessions page to begin." />
+          <EmptyState icon={<FileText size={26} />} title="No pending candidates." description="Candidates with saved hiring decisions will move out of this list." />
         )}
       </section>
     </>

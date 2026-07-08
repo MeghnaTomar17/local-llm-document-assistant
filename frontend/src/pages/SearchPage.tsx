@@ -54,7 +54,7 @@ export function SearchPage() {
 
   async function runSearch() {
     const trimmed = query.trim();
-    if (!trimmed) return;
+    if (!trimmed || loading) return;
     setLoading(true);
     setSearchStep("Generating Search Query...");
     setError("");
@@ -74,6 +74,7 @@ export function SearchPage() {
   }
 
   function restoreHistory(item: SearchHistoryItem) {
+    if (loading) return;
     setQuery(item.query);
     setResponse({
       question: item.query,
@@ -86,8 +87,10 @@ export function SearchPage() {
   }
 
   async function openCandidate(row: SearchResult) {
+    if (loading) return;
     const id = (row.id || row.resume_id) as UUID | undefined;
     if (!id) return;
+    setNotice("");
     try {
       setSelected(await getResume(id));
     } catch (err) {
@@ -104,6 +107,7 @@ export function SearchPage() {
         </div>
         <Button
           icon={<History size={16} />}
+          disabled={loading}
           onClick={() => setShowHistory((current) => !current)}
         >
           {showHistory ? "Hide History" : "Show History"}
@@ -119,9 +123,14 @@ export function SearchPage() {
               runSearch();
             }}
           >
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Example: Java developers in Bangalore with 2+ projects" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Example: Java developers in Bangalore with 2+ projects"
+              disabled={loading}
+            />
             <Button variant="primary" icon={<Search size={17} />} disabled={loading || !query.trim()}>
-              Search
+              {loading ? "Searching" : "Search"}
             </Button>
           </form>
         </div>
@@ -133,6 +142,7 @@ export function SearchPage() {
                 <Button
                   variant="ghost"
                   icon={<Trash2 size={15} />}
+                  disabled={loading || loadingHistory}
                   onClick={async () => {
                     await clearSearchHistory();
                     await loadHistory();
@@ -144,7 +154,7 @@ export function SearchPage() {
             {!loadingHistory && !history.length && <EmptyState icon={<History size={24} />} title="No saved recruiter searches." description="Review your recent candidate searches." />}
             {!loadingHistory && history.map((item) => (
               <article className="history-item" key={item.id}>
-                <button type="button" className="history-restore" onClick={() => restoreHistory(item)}>
+                <button type="button" className="history-restore" disabled={loading} onClick={() => restoreHistory(item)}>
                   <strong>{item.query}</strong>
                   <span>{new Date(item.created_at).toLocaleString()}</span>
                   <small>{item.result_count} results</small>
@@ -153,6 +163,7 @@ export function SearchPage() {
                   className="history-delete"
                   type="button"
                   title="Delete history item"
+                  disabled={loading}
                   onClick={async (event) => {
                     event.stopPropagation();
                     await deleteSearchHistoryItem(item.id);
@@ -169,8 +180,11 @@ export function SearchPage() {
 
       {error && <div className="error-banner">{error}</div>}
       {loading && (
-        <section className="panel fade-in">
-          <Loader label={searchStep || "Searching Candidates..."} />
+        <section className="panel search-loading-panel fade-in">
+          <div className="section-title">
+            <h3>Searching Candidates</h3>
+            <Loader label={searchStep || "Searching Candidates..."} />
+          </div>
           <SkeletonRows count={6} />
         </section>
       )}

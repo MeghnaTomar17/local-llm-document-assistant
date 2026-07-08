@@ -5,6 +5,8 @@ import { listResumes } from "../services/resumeApi";
 import { listSessionResumes, listSessions, switchSession } from "../services/sessionApi";
 import type { BulkImportStatus, RecruiterSession, ResumeListItem, SessionsResponse, UUID } from "../types";
 
+const BULK_IMPORT_STALE_TIMEOUT_MS = 100_000;
+
 interface AppContextValue {
   resumes: ResumeListItem[];
   sessions: RecruiterSession[];
@@ -17,6 +19,7 @@ interface AppContextValue {
   bulkImportStatus: BulkImportStatus;
   sessionsLoaded: boolean;
   refresh: () => Promise<void>;
+  refreshBulkImportStatus: () => Promise<BulkImportStatus | null>;
   setNotice: (notice: string) => void;
   clearError: () => void;
   updateResumeInState: (resume: ResumeListItem) => void;
@@ -43,6 +46,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     message: "No bulk import is running.",
   });
   const lastImportSignature = useRef("");
+  const statusPollRef = useRef<number | null>(null);
 
   async function loadActiveSessionResumes(sessionId: UUID | null) {
     if (!sessionId) {
@@ -79,32 +83,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    async function pollImportStatus() {
-      try {
-        const status = await getBulkImportStatus();
-        if (cancelled) return;
+    refreshBulkImportStatus().then((status) => {
+      if (!cancelled && status?.running) startBulkStatusPolling();
+    });
 
-        setBulkImportStatus(status);
-        const signature = `${status.running}:${status.processed}:${status.total}:${status.failed}:${status.updated_at || ""}`;
-        const hasProgress = status.total > 0 && signature !== lastImportSignature.current;
-        const shouldRefresh = hasProgress && (status.running || status.processed > 0);
-
-        if (shouldRefresh) {
-          lastImportSignature.current = signature;
-          refresh().catch((err) => setError(getApiError(err)));
-        }
-      } catch (err) {
-        if (!cancelled) setError(getApiError(err));
-      }
+    function handleFocus() {
+      refreshBulkImportStatus().then((status) => {
+        if (status?.running) startBulkStatusPolling();
+      });
     }
 
-    pollImportStatus();
-    const interval = window.setInterval(pollImportStatus, 3000);
+    window.addEventListener("focus", handleFocus);
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      stopBulkStatusPolling();
     };
   }, []);
+
+  async function refreshBulkImportStatus(): Promise<BulkImportStatus | null> {
+    try {
+      const status = await getBulkImportStatus();
+      setBulkImportStatus(status);
+
+      const signature = `${status.running}:${status.processed}:${status.total}:${status.failed}:${status.updated_at || ""}`;
+      const hasProgress = status.total > 0 && signature !== lastImportSignature.current;
+
+      if (hasProgress) {
+        lastImportSignature.current = signature;
+        refresh().catch((err) => setError(getApiError(err)));
+      }
+
+      if (!status.running) {
+        stopBulkStatusPolling();
+      } else if (isBulkImportStale(status)) {
+        stopBulkStatusPolling();
+      }
+
+      return status;
+    } catch (err) {
+      setError(getApiError(err));
+      stopBulkStatusPolling();
+      return null;
+    }
+  }
+
+  function startBulkStatusPolling() {
+    if (statusPollRef.current != null) return;
+    statusPollRef.current = window.setInterval(() => {
+      refreshBulkImportStatus().then((status) => {
+        if (!status?.running) stopBulkStatusPolling();
+      });
+    }, 3000);
+  }
+
+  function stopBulkStatusPolling() {
+    if (statusPollRef.current == null) return;
+    window.clearInterval(statusPollRef.current);
+    statusPollRef.current = null;
+  }
 
   async function handleSwitchSession(sessionId: UUID) {
     if (sessionId === activeSessionId) return;
@@ -152,7 +189,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notice,
       bulkImportStatus,
       sessionsLoaded,
-      refresh,
+      refresh: async () => {
+        await refresh();
+        const status = await refreshBulkImportStatus();
+        if (status?.running) startBulkStatusPolling();
+      },
+      refreshBulkImportStatus,
       setNotice,
       clearError: () => setError(""),
       updateResumeInState,
@@ -173,4 +215,9 @@ export function useAppData() {
 function firstSessionId(data: SessionsResponse): UUID | null {
   const first = data.sessions?.[0];
   return first?.session_id || first?.id || null;
+}
+
+function isBulkImportStale(status: BulkImportStatus) {
+  const updatedAt = status.updated_at ? new Date(status.updated_at).getTime() : 0;
+  return Boolean(status.running && updatedAt && Date.now() - updatedAt > BULK_IMPORT_STALE_TIMEOUT_MS);
 }

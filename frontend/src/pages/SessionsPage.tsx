@@ -1,5 +1,5 @@
 import { Database, FileText, MapPin, MessageSquare, Search, UserRound } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ResumeWorkspace } from "../components/resume/ResumeWorkspace";
 import { useAppData } from "../context/AppContext";
 import { getResume } from "../services/resumeApi";
@@ -9,6 +9,8 @@ import { Loader } from "../components/ui/Loader";
 import { SessionSkeletons, WorkspaceSkeleton } from "../components/ui/Skeleton";
 import { Table, type TableColumn } from "../components/ui/Table";
 import type { BulkImportStatus, RecruiterSession, ResumeDetail, ResumeListItem, UUID } from "../types";
+
+const BULK_IMPORT_STALE_TIMEOUT_MS = 15_000;
 
 export function SessionsPage() {
   const { sessions, activeSessionId, activeSessionResumes, busy, bulkImportStatus, sessionsLoaded, setNotice, updateResumeInState, handleSwitchSession } = useAppData();
@@ -40,13 +42,15 @@ export function SessionsPage() {
   }
 
   return (
-    <>
+    <div className="sessions-page">
       <header className="page-header">
         <div>
           <h2>Sessions</h2>
           <p>Manage uploaded resumes and continue reviewing candidates anytime.</p>
         </div>
       </header>
+
+      <ImportStatusPanel status={bulkImportStatus} />
 
       <section className="split-layout sessions-layout">
         <div className="panel">
@@ -82,8 +86,6 @@ export function SessionsPage() {
         </div>
 
         <div className="panel session-main-panel">
-          <ImportStatusPanel status={bulkImportStatus} />
-
           <div className="section-title">
             <h3>Active session resumes</h3>
             <Badge tone="info">{activeSessionResumes.length} resumes</Badge>
@@ -121,12 +123,13 @@ export function SessionsPage() {
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 
   async function openSession(session: RecruiterSession) {
     const sessionId = session.session_id || session.id;
     if (!sessionId) return;
+    setNotice("");
     setWorkspaceError("");
     const resumeId = session.resume_id || session.document?.resume_id;
     if (resumeId) setOpeningResumeId(resumeId);
@@ -150,6 +153,7 @@ export function SessionsPage() {
 
   async function openResume(resumeId?: UUID | null) {
     if (!resumeId) return;
+    setNotice("");
     setWorkspaceError("");
     setOpeningResumeId(resumeId);
     setWorkspaceRestoreStep("Loading candidate metadata...");
@@ -166,12 +170,21 @@ export function SessionsPage() {
 }
 
 function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
+  const [now, setNow] = useState(Date.now());
   const total = status.total || 0;
   const processed = status.processed || 0;
   const progress = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
   const currentFile = status.current_file || "";
   const lastUpdate = formatStatusTime(status.updated_at || status.finished_at || status.started_at);
-  const eta = status.running ? estimateImportEta(status) : "";
+  const updatedAtMs = status.updated_at ? new Date(status.updated_at).getTime() : 0;
+  const interrupted = Boolean(status.running && updatedAtMs && now - updatedAtMs > BULK_IMPORT_STALE_TIMEOUT_MS);
+  const eta = status.running && !interrupted ? estimateImportEta(status, now) : "";
+
+  useEffect(() => {
+    if (!status.running || interrupted) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [status.running, status.updated_at, interrupted]);
 
   if (!status.running) {
     return (
@@ -192,13 +205,13 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
   }
 
   return (
-    <section className="import-status-panel">
+    <section className={`import-status-panel ${interrupted ? "is-interrupted" : "is-running"}`}>
       <div className="section-title">
         <div>
           <h3><Database size={17} /> Import Status</h3>
-          <span>Bulk resume import is running.</span>
+          <span>{interrupted ? "Bulk import has stopped sending updates." : "Bulk resume import is running."}</span>
         </div>
-        <Badge tone="info">Running</Badge>
+        <Badge tone={interrupted ? "warning" : "info"}>{interrupted ? "Interrupted" : "Running"}</Badge>
       </div>
       <div className="import-progress-grid">
         <div>
@@ -206,19 +219,19 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
           <span>{status.failed ? `${status.failed} failed` : "No failures reported"}</span>
         </div>
         <div className="import-current-file">
-          <span>{status.running ? "Current file" : "Last update"}</span>
+          <span>{interrupted ? "Last known file" : "Current file"}</span>
           <strong>{currentFile || status.message || "Preparing next resume..."}</strong>
         </div>
       </div>
       <div className="progress-track">
-        <div
+        <div>
           className={`progress-bar ${!total ? "is-indeterminate" : ""}`}
           style={total ? { width: `${progress}%` } : undefined}
-        />
+        </div>
       </div>
       <div className="import-runtime-meta">
         <small>{total ? `${progress}% complete` : "Calculating progress..."}</small>
-        <small>{eta ? `ETA ${eta}` : "ETA calculating"}</small>
+        <small>{interrupted ? "ETA paused" : eta ? `ETA ${eta}` : "ETA calculating"}</small>
         <small>Updated {lastUpdate}</small>
       </div>
     </section>
@@ -232,13 +245,13 @@ function formatStatusTime(value?: string | null) {
   return date.toLocaleString();
 }
 
-function estimateImportEta(status: BulkImportStatus) {
+function estimateImportEta(status: BulkImportStatus, now = Date.now()) {
   const startedAt = status.started_at ? new Date(status.started_at).getTime() : 0;
   const processed = status.processed || 0;
   const total = status.total || 0;
   if (!startedAt || !processed || !total || processed >= total) return "";
 
-  const elapsedMs = Date.now() - startedAt;
+  const elapsedMs = now - startedAt;
   const averageMs = elapsedMs / processed;
   const remainingMs = Math.max(0, Math.round((total - processed) * averageMs));
   const minutes = Math.floor(remainingMs / 60000);
