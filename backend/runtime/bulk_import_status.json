@@ -1,18 +1,27 @@
 {
-  "state": "COMPLETED",
+  "state": "INTERRUPTED",
   "running": false,
   "processed": 2,
-  "total": 2,
+  "total": 4,
   "failed": 0,
-  "duplicates": 0,
-  "duplicate_warnings": [],
-  "current_file": "",
-  "last_completed_file": "Deepak-M-GIS-CV 1 (1).pdf",
-  "message": "Bulk import finished. 2 of 2 resumes processed.",
-  "started_at": "2026-07-08T17:14:43.122703+00:00",
-  "updated_at": "2026-07-08T17:16:56.716860+00:00",
-  "finished_at": "2026-07-08T17:16:56.691722+00:00",
-  "interrupted": false,
-  "interrupted_at": null,
-  "pid": 12904
+  "duplicates": 1,
+  "duplicate_warnings": [
+    {
+      "file_name": "B.Karishma_2025 2 (1).pdf",
+      "candidate_name": "B. Karishma",
+      "email": "karishmabaskaran@gmail.com",
+      "phone": "+91 908085540",
+      "reason": "File Hash",
+      "timestamp": "2026-07-09T05:24:08.629550+00:00"
+    }
+  ],
+  "current_file": "Balan-Gunasekaran-GIS Analyst.pdf",
+  "last_completed_file": "",
+  "message": "Bulk import was interrupted by user (KeyboardInterrupt).",
+  "started_at": "2026-07-09T05:24:08.414569+00:00",
+  "updated_at": "2026-07-09T05:26:26.578108+00:00",
+  "finished_at": null,
+  "interrupted": true,
+  "interrupted_at": "2026-07-09T05:26:26.577569+00:00",
+  "pid": 34396
 }

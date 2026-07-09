@@ -41,7 +41,7 @@ export function SessionsPage() {
 
   return (
     <div className="sessions-page">
-      <ImportStatusPanel status={bulkImportStatus} />
+      <ImportStatusPanel status={bulkImportStatus} onNotify={setNotice} />
 
       <header className="page-header">
         <div>
@@ -167,19 +167,9 @@ export function SessionsPage() {
   }
 }
 
-function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
+function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onNotify: (msg: string) => void }) {
   const [now, setNow] = useState(Date.now());
   const [showDuplicatesList, setShowDuplicatesList] = useState(false);
-  const [activeDuplicateToast, setActiveDuplicateToast] = useState<{
-    file_name: string;
-    candidate_name: string;
-    email: string;
-    phone: string;
-    reason: string;
-    timestamp: string;
-  } | null>(null);
-
-  const displayedWarningsRef = useRef<Set<string>>(new Set());
 
   const total = status.total || 0;
   const processed = status.processed || 0;
@@ -194,6 +184,8 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
   const etaReferenceTime = isInterrupted && interruptedTimeMs ? interruptedTimeMs : now;
   const eta = isRunning || isInterrupted ? estimateImportEta(status, etaReferenceTime) : "";
 
+  const wasRunningRef = useRef(isRunning);
+
   useEffect(() => {
     if (!isRunning) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -201,45 +193,13 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
   }, [isRunning, status.updated_at]);
 
   useEffect(() => {
-    if (status.duplicate_warnings && status.duplicate_warnings.length > 0) {
-      const newWarnings = status.duplicate_warnings.filter(
-        (w) => !displayedWarningsRef.current.has(w.file_name + w.timestamp)
-      );
-      if (newWarnings.length > 0) {
-        const latest = newWarnings[newWarnings.length - 1];
-        setActiveDuplicateToast(latest);
-        newWarnings.forEach((w) => displayedWarningsRef.current.add(w.file_name + w.timestamp));
+    if (wasRunningRef.current && !isRunning) {
+      if (status.duplicate_warnings && status.duplicate_warnings.length > 0) {
+        onNotify(`Bulk import ended. ${status.duplicate_warnings.length} resume(s) skipped as duplicates.`);
       }
     }
-  }, [status.duplicate_warnings]);
-
-  useEffect(() => {
-    if (activeDuplicateToast) {
-      const timer = window.setTimeout(() => {
-        setActiveDuplicateToast(null);
-      }, 7000);
-      return () => window.clearTimeout(timer);
-    }
-  }, [activeDuplicateToast]);
-
-  function renderDuplicateToast() {
-    if (!activeDuplicateToast) return null;
-    return (
-      <div className="duplicate-toast fade-in">
-        <div className="duplicate-toast-header">
-          <strong>⚠ Candidate Already Exists</strong>
-          <button type="button" className="close-toast-btn" onClick={() => setActiveDuplicateToast(null)}>
-            &times;
-          </button>
-        </div>
-        <div className="duplicate-toast-body">
-          <p><strong>{activeDuplicateToast.candidate_name}</strong> already exists in the database.</p>
-          <p><small>Reason: Duplicate {activeDuplicateToast.reason.toLowerCase()}.</small></p>
-          <p className="toast-skip-note">This resume was skipped.</p>
-        </div>
-      </div>
-    );
-  }
+    wasRunningRef.current = isRunning;
+  }, [isRunning, status.duplicate_warnings, onNotify]);
 
   const showSummary = lifecycleState === "COMPLETED" && status.finished_at && status.total > 0;
 
@@ -247,7 +207,6 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
     const successes = Math.max(0, processed - failed - (status.duplicates || 0));
     return (
       <section className="import-status-panel import-status-summary">
-        {activeDuplicateToast && renderDuplicateToast()}
         <div className="section-title">
           <div>
             <h3><Database size={17} /> Bulk Import Completed</h3>
@@ -306,7 +265,6 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
     const interruptedTime = formatStatusTime(status.interrupted_at || status.updated_at);
     return (
       <section className="import-status-panel import-status-interrupted">
-        {activeDuplicateToast && renderDuplicateToast()}
         <div className="section-title">
           <div>
             <h3><Database size={17} /> Import Status</h3>
@@ -369,7 +327,6 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
   if (!isRunning) {
     return (
       <section className="import-status-panel import-status-idle">
-        {activeDuplicateToast && renderDuplicateToast()}
         <div className="section-title">
           <div>
             <h3><Database size={17} /> Import Status</h3>
@@ -387,7 +344,6 @@ function ImportStatusPanel({ status }: { status: BulkImportStatus }) {
 
   return (
     <section className="import-status-panel import-status-running">
-      {activeDuplicateToast && renderDuplicateToast()}
       <div className="section-title">
         <div>
           <h3><Database size={17} /> Import Status</h3>

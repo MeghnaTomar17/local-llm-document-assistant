@@ -186,12 +186,6 @@ export function SearchPage() {
             <h3>Results</h3>
             <span>{response.row_count} matches{response.execution_time_ms ? ` in ${response.execution_time_ms} ms` : ""}</span>
           </div>
-          {response.generated_sql && (
-            <details className="sql-panel">
-              <summary>Generated SQL</summary>
-              <pre>{response.generated_sql}</pre>
-            </details>
-          )}
           {response.results.length ? (
             <>
               <Table
