@@ -292,6 +292,18 @@ class Resume(Base):
         nullable=True,
     )
 
+    interview_marked: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
+    candidate_type: Mapped[str] = mapped_column(
+        String(20),
+        default="EXTERNAL",
+        nullable=False,
+    )
+
     # -------------------------
     # Timestamps
     # -------------------------

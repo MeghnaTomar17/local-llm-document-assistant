@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, FileClock, FileText, Sparkles, UserCheck, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileClock, FileText, Globe, Sparkles, Target, UserCheck, Users } from "lucide-react";
 import { useAppData } from "../context/AppContext";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -15,6 +15,9 @@ export function DashboardPage() {
   const accepted = resumes.filter((resume) => resume.hr_decision === "ACCEPTED").length;
   const rejected = resumes.filter((resume) => resume.hr_decision === "REJECTED").length;
   const pending = resumes.filter((resume) => !resume.hr_decision || resume.hr_decision === "PENDING").length;
+  const interviewMarkedCount = resumes.filter((resume) => resume.interview_marked === true).length;
+  const internalCount = resumes.filter((resume) => resume.candidate_type === "INTERNAL").length;
+  const externalCount = resumes.filter((resume) => resume.candidate_type === "EXTERNAL" || !resume.candidate_type).length;
   const pendingCandidates = [...resumes]
     .filter((resume) => !resume.hr_decision || resume.hr_decision === "PENDING")
     .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime());
@@ -50,7 +53,9 @@ export function DashboardPage() {
         <Metric icon={<CheckCircle2 size={19} />} label="Accepted" value={accepted} />
         <Metric icon={<AlertTriangle size={19} />} label="Rejected" value={rejected} />
         <Metric icon={<FileClock size={19} />} label="Pending candidates" value={pending} />
-        <Metric icon={<CheckCircle2 size={19} />} label="Sessions" value={sessions.length} />
+        <Metric icon={<Target size={19} />} label="Marked for Interview" value={interviewMarkedCount} />
+        <Metric icon={<Users size={19} />} label="Internal Candidates" value={internalCount} />
+        <Metric icon={<Globe size={19} />} label="External Candidates" value={externalCount} />
       </section>
 
       <section className="panel">

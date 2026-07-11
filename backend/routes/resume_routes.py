@@ -5,7 +5,14 @@ from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 
-from backend.schemas.resume import ResumeChunkResponse, ResumeListResponse, ResumeResponse, ResumeUpdate
+from backend.schemas.resume import (
+    ResumeChunkResponse,
+    ResumeListResponse,
+    ResumeResponse,
+    ResumeUpdate,
+    ResumeInterviewUpdate,
+    ResumeCandidateTypeUpdate,
+)
 from backend.services.resume_service import (
     IntegrityError,
     SQLAlchemyError,
@@ -15,6 +22,8 @@ from backend.services.resume_service import (
     get_resume_response,
     list_resume_response,
     update_resume_response,
+    update_resume_interview_status,
+    update_resume_candidate_classification,
 )
 from backend.services.preview_service import (
     PreviewConversionError,
@@ -224,3 +233,41 @@ def delete_resume(resume_id: UUID) -> Response:
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/{resume_id}/interview", response_model=ResumeResponse)
+def patch_resume_interview(resume_id: UUID, payload: ResumeInterviewUpdate):
+    try:
+        resume = update_resume_interview_status(resume_id, payload.interview_marked)
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update resume interview status.",
+        ) from exc
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found.",
+        )
+
+    return resume
+
+
+@router.patch("/{resume_id}/candidate-type", response_model=ResumeResponse)
+def patch_resume_candidate_type(resume_id: UUID, payload: ResumeCandidateTypeUpdate):
+    try:
+        resume = update_resume_candidate_classification(resume_id, payload.candidate_type)
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update resume candidate type.",
+        ) from exc
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found.",
+        )
+
+    return resume

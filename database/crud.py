@@ -959,3 +959,35 @@ def delete_all_search_history() -> int:
     finally:
 
         session.close()
+
+
+def update_resume_interview(resume_id, interview_marked: bool):
+    session = SessionLocal()
+    try:
+        statement = select(Resume).where(Resume.id == resume_id)
+        resume = session.execute(statement).scalar_one_or_none()
+        if not resume:
+            return None
+        resume.interview_marked = interview_marked
+        resume.updated_at = datetime.now(timezone.utc)
+        session.commit()
+        session.refresh(resume)
+        return resume
+    finally:
+        session.close()
+
+
+def update_resume_candidate_type(resume_id, candidate_type: str):
+    session = SessionLocal()
+    try:
+        statement = select(Resume).where(Resume.id == resume_id)
+        resume = session.execute(statement).scalar_one_or_none()
+        if not resume:
+            return None
+        resume.candidate_type = candidate_type.upper()
+        resume.updated_at = datetime.now(timezone.utc)
+        session.commit()
+        session.refresh(resume)
+        return resume
+    finally:
+        session.close()

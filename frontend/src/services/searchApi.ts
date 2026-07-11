@@ -1,11 +1,17 @@
 import { api } from "./http";
 import type { SearchHistoryItem, SearchResponse, UUID } from "../types";
 
-export async function recruiterSearch(query: string, sessionId?: UUID | null): Promise<SearchResponse> {
+export async function recruiterSearch(
+  query: string,
+  sessionId?: UUID | null,
+  candidateType?: string | null,
+  signal?: AbortSignal
+): Promise<SearchResponse> {
   const response = await api.post<SearchResponse>("/search", {
     query,
     session_id: sessionId || undefined,
-  });
+    candidate_type: candidateType || undefined,
+  }, { signal });
   return response.data;
 }
 

@@ -66,6 +66,8 @@ def public_session(session, active_session_id: str | UUID | None = None) -> dict
         "uploaded_at": resume.uploaded_at if resume else session.created_at,
         "hr_decision": resume.hr_decision if resume else "PENDING",
         "decision_at": resume.decision_at if resume else None,
+        "interview_marked": resume.interview_marked if resume else False,
+        "candidate_type": resume.candidate_type if resume else "EXTERNAL",
         "document": document,
         "documents": [_public_resume_document(resume) for resume in resumes],
         "document_count": len(resumes),
@@ -131,6 +133,8 @@ def _public_resume(resume) -> dict:
         "final_notes": resume.final_notes,
         "hr_decision": resume.hr_decision,
         "decision_at": resume.decision_at,
+        "interview_marked": resume.interview_marked,
+        "candidate_type": resume.candidate_type,
         "uploaded_at": resume.uploaded_at,
         "updated_at": resume.updated_at,
     }

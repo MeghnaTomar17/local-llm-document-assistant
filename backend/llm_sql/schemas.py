@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class RecruiterSearchRequest(BaseModel):
     query: str = Field(min_length=1)
     session_id: UUID | None = None
+    candidate_type: str | None = None
 
 
 class RecruiterResumeResult(BaseModel):
@@ -29,6 +30,8 @@ class RecruiterResumeResult(BaseModel):
     final_notes: str | None = None
     hr_decision: str | None = None
     decision_at: datetime | str | None = None
+    interview_marked: bool | None = None
+    candidate_type: str | None = "EXTERNAL"
 
 
 class RecruiterSearchResponse(BaseModel):
@@ -37,6 +40,7 @@ class RecruiterSearchResponse(BaseModel):
     row_count: int
     execution_time_ms: float
     results: list[RecruiterResumeResult | dict[str, Any]]
+    model_used: str | None = None
 
 
 class RecruiterSearchHistoryItem(BaseModel):

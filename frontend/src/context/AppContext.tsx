@@ -185,6 +185,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         uploaded_at: resume.uploaded_at,
         hr_decision: resume.hr_decision,
         decision_at: resume.decision_at,
+        interview_marked: resume.interview_marked,
+        candidate_type: resume.candidate_type,
         title: resume.candidate_name || session.title,
         display_name: resume.candidate_name || session.display_name,
       };

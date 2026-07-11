@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, History, Search, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ResumeDetailsPanel } from "../components/resume/ResumeDetailsPanel";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -14,7 +14,7 @@ import { clearSearchHistory, deleteSearchHistoryItem, listSearchHistory, recruit
 import type { ResumeDetail, SearchHistoryItem, SearchResponse, SearchResult, UUID } from "../types";
 
 export function SearchPage() {
-  const { refresh, setNotice } = useAppData();
+  const { refresh, setNotice, updateResumeInState } = useAppData();
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
@@ -24,7 +24,51 @@ export function SearchPage() {
   const [showHistory, setShowHistory] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ResumeDetail | null>(null);
-  const { page, pageCount, pageItems, setPage } = usePagination(response?.results || [], 10);
+  const [classificationFilter, setClassificationFilter] = useState<"ALL" | "INTERNAL" | "EXTERNAL">(() => {
+    return (localStorage.getItem("search_classification_filter") as "ALL" | "INTERNAL" | "EXTERNAL") || "ALL";
+  });
+
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [searchStage, setSearchStage] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 72), 288)}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [query]);
+
+  useEffect(() => {
+    localStorage.setItem("search_classification_filter", classificationFilter);
+  }, [classificationFilter]);
+
+  const filteredResults = useMemo(() => {
+    const results = response?.results || [];
+    if (classificationFilter === "ALL") return results;
+    return results.filter((row) => {
+      const type = row.candidate_type || "EXTERNAL";
+      if (classificationFilter === "INTERNAL") return type === "INTERNAL";
+      if (classificationFilter === "EXTERNAL") return type === "EXTERNAL";
+      return true;
+    });
+  }, [response?.results, classificationFilter]);
+
+  const { page, pageCount, pageItems, setPage } = usePagination(filteredResults, 10);
 
   const columns: TableColumn<SearchResult>[] = [
     { key: "candidate", header: "Candidate", className: "candidate-column", render: (row) => String(row.candidate_name || row.original_file_name || "Unnamed") },
@@ -34,6 +78,12 @@ export function SearchPage() {
     { key: "type", header: "Type", render: (row) => <Badge tone={row.fresher ? "info" : "success"}>{row.fresher ? "Fresher" : "Experienced"}</Badge> },
     { key: "verified", header: "Verified", render: (row) => <Badge tone={row.is_verified ? "success" : "warning"}>{row.is_verified ? "Yes" : "Review"}</Badge> },
     { key: "decision", header: "Decision", render: (row) => <DecisionBadge decision={row.hr_decision} /> },
+    { key: "interview", header: "Interview", render: (row) => row.interview_marked ? <Badge tone="success">Marked</Badge> : "—" },
+    { key: "classification", header: "Classification", render: (row) => (
+      <Badge tone={row.candidate_type === "INTERNAL" ? "success" : "info"}>
+        {row.candidate_type === "INTERNAL" ? "Internal" : "External"}
+      </Badge>
+    ) },
   ];
 
   useEffect(() => {
@@ -54,21 +104,50 @@ export function SearchPage() {
   async function runSearch() {
     const trimmed = query.trim();
     if (!trimmed || loading) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     setLoading(true);
-    setSearchStep("Searching candidates...");
+    setSearchStep("Understanding recruiter requirements...");
+    setElapsedTime(0);
+    setSearchStage(0);
     setError("");
     setSelected(null);
-    const timer = window.setTimeout(() => setSearchStep("Finding matching resumes..."), 650);
+
+    const startTime = Date.now();
+    const elapsedInterval = window.setInterval(() => {
+      setElapsedTime(Number(((Date.now() - startTime) / 1000).toFixed(1)));
+    }, 100);
+
+    const stageInterval = window.setInterval(() => {
+      setSearchStage((prev) => {
+        const next = prev + 1;
+        if (next === 1) setSearchStep("Generating optimized search query...");
+        if (next === 2) setSearchStep("Searching candidates...");
+        if (next === 3) setSearchStep("Ranking candidates...");
+        return Math.min(next, 3);
+      });
+    }, 1500);
+
     try {
-      setResponse(await recruiterSearch(trimmed));
+      const responseData = await recruiterSearch(trimmed, null, classificationFilter, signal);
+      setResponse(responseData);
       setPage(1);
       await loadHistory();
-    } catch (err) {
-      setError(getApiError(err));
+    } catch (err: any) {
+      if (err.name !== "CanceledError" && err.name !== "AbortError" && err.message !== "canceled") {
+        setError(getApiError(err));
+      }
     } finally {
-      window.clearTimeout(timer);
+      window.clearInterval(elapsedInterval);
+      window.clearInterval(stageInterval);
       setLoading(false);
       setSearchStep("");
+      abortControllerRef.current = null;
     }
   }
 
@@ -115,6 +194,37 @@ export function SearchPage() {
 
       <section className={`search-layout ${showHistory ? "" : "history-hidden"}`.trim()}>
         <div className="search-panel">
+          <div className="search-filter-row" style={{ marginBottom: "12px", display: "flex", gap: "10px", alignItems: "center" }}>
+            <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 600 }}>Candidate Classification Pool:</span>
+            <div className="segmented-control">
+              <button
+                type="button"
+                className={`segment-btn ${classificationFilter === "ALL" ? "active" : ""}`}
+                onClick={() => setClassificationFilter("ALL")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`segment-btn ${classificationFilter === "INTERNAL" ? "active" : ""}`}
+                onClick={() => setClassificationFilter("INTERNAL")}
+              >
+                Internal
+              </button>
+              <button
+                type="button"
+                className={`segment-btn ${classificationFilter === "EXTERNAL" ? "active" : ""}`}
+                onClick={() => setClassificationFilter("EXTERNAL")}
+              >
+                External
+              </button>
+            </div>
+          </div>
+          {query.length > 4000 && (
+            <div className="warning-banner">
+              Long requirement detected. Less important sections will be trimmed automatically.
+            </div>
+          )}
           <form
             className="search-form"
             onSubmit={(event) => {
@@ -122,12 +232,20 @@ export function SearchPage() {
               runSearch();
             }}
           >
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Example: Java developers in Bangalore with 2+ projects"
-              disabled={loading}
-            />
+            <div className="textarea-container">
+              <textarea
+                ref={textareaRef}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={"Paste the complete job description or hiring requirements here...\n\nExample:\nLooking for a GIS Developer with ArcGIS Enterprise, ArcPy, Python, PostGIS, REST APIs, React, Docker and 3+ years of experience..."}
+                disabled={loading}
+              />
+              <div className="char-counter-row">
+                <span className={`char-counter ${query.length > 4000 ? "warning" : ""}`}>
+                  {query.length} characters {query.length > 4000 ? "/ Max Limit Exceeded" : ""}
+                </span>
+              </div>
+            </div>
             <Button variant="primary" icon={<Search size={17} />} disabled={loading || !query.trim()}>
               {loading ? "Searching" : "Search"}
             </Button>
@@ -178,33 +296,67 @@ export function SearchPage() {
       </section>
 
       {error && <div className="error-banner">{error}</div>}
-      {loading && <SearchLoadingState message={searchStep || "Searching candidates..."} />}
+      {loading && <SearchLoadingState message={searchStep || "Searching candidates..."} elapsed={elapsedTime} />}
 
       {response && !loading && (
-        <section className="panel">
-          <div className="section-title">
-            <h3>Results</h3>
-            <span>{response.row_count} matches{response.execution_time_ms ? ` in ${response.execution_time_ms} ms` : ""}</span>
+        <>
+          <div className="search-stats-banner">
+            <div>
+              <span>Requirements Analyzed</span>
+              <strong>Yes</strong>
+            </div>
+            <div>
+              <span>Candidates Matched</span>
+              <strong>{response.row_count}</strong>
+            </div>
+            <div>
+              <span>Execution Time</span>
+              <strong>{((response.execution_time_ms || 0) / 1000).toFixed(2)}s</strong>
+            </div>
+            <div>
+              <span>Results Returned</span>
+              <strong>{filteredResults.length}</strong>
+            </div>
+            <div>
+              <span>Candidate Pool</span>
+              <strong style={{ textTransform: "capitalize" }}>
+                {classificationFilter.toLowerCase()}
+              </strong>
+            </div>
+            <div>
+              <span>Search Model</span>
+              <strong>{response.model_used || "qwen2.5-coder:7b"}</strong>
+            </div>
           </div>
-          {response.results.length ? (
-            <>
-              <Table
-                className="search-results-table"
-                columns={columns}
-                rows={pageItems}
-                getRowKey={(row, index) => String(row.id || row.resume_id || index)}
-                onRowClick={openCandidate}
+
+          <section className="panel">
+            <div className="section-title">
+              <h3>Results</h3>
+              <span>{response.row_count} matches{response.execution_time_ms ? ` in ${response.execution_time_ms} ms` : ""}</span>
+            </div>
+            {filteredResults.length ? (
+              <>
+                <Table
+                  className="search-results-table"
+                  columns={columns}
+                  rows={pageItems}
+                  getRowKey={(row, index) => String(row.id || row.resume_id || index)}
+                  onRowClick={openCandidate}
+                />
+                <div className="pagination">
+                  <Button icon={<ChevronLeft size={16} />} disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+                  <span>Page {page} of {pageCount}</span>
+                  <Button icon={<ChevronRight size={16} />} disabled={page >= pageCount} onClick={() => setPage(page + 1)}>Next</Button>
+                </div>
+              </>
+            ) : (
+              <EmptyState
+                title="No matching candidates were found."
+                description="Try simplifying the requirements or reducing mandatory skills."
               />
-              <div className="pagination">
-                <Button icon={<ChevronLeft size={16} />} disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
-                <span>Page {page} of {pageCount}</span>
-                <Button icon={<ChevronRight size={16} />} disabled={page >= pageCount} onClick={() => setPage(page + 1)}>Next</Button>
-              </div>
-            </>
-          ) : (
-            <EmptyState title="No matching candidates." />
-          )}
-        </section>
+            )}
+          </section>
+        </>
       )}
 
       <ResumeDetailsPanel
@@ -213,6 +365,8 @@ export function SearchPage() {
         onSaved={async (resume) => {
           setSelected(resume);
           setResponse((current) => updateSearchResponse(current, resume));
+          setHistory((current) => updateSearchHistory(current, resume));
+          updateResumeInState(resume);
           await refresh();
           setNotice("Resume metadata updated successfully.");
         }}
@@ -240,9 +394,38 @@ function updateSearchResponse(current: SearchResponse | null, resume: ResumeDeta
         hr_decision: resume.hr_decision,
         decision_at: resume.decision_at,
         updated_at: resume.updated_at,
+        interview_marked: resume.interview_marked,
+        candidate_type: resume.candidate_type,
       };
     }),
   };
+}
+
+function updateSearchHistory(current: SearchHistoryItem[], resume: ResumeDetail): SearchHistoryItem[] {
+  return current.map((item) => {
+    return {
+      ...item,
+      results_snapshot: item.results_snapshot.map((row) => {
+        const rowId = row.id || row.resume_id;
+        if (rowId !== resume.id) return row;
+        return {
+          ...row,
+          candidate_name: resume.candidate_name,
+          email: resume.email,
+          phone_number: resume.phone_number,
+          skills: resume.skills,
+          cities: resume.cities,
+          fresher: resume.fresher,
+          is_verified: resume.is_verified,
+          hr_decision: resume.hr_decision,
+          decision_at: resume.decision_at,
+          updated_at: resume.updated_at,
+          interview_marked: resume.interview_marked,
+          candidate_type: resume.candidate_type,
+        };
+      }),
+    };
+  });
 }
 
 function DecisionBadge({ decision }: { decision?: string | null }) {
@@ -252,18 +435,13 @@ function DecisionBadge({ decision }: { decision?: string | null }) {
   return <Badge tone="warning">Pending</Badge>;
 }
 
-function SearchLoadingState({ message }: { message: string }) {
+function SearchLoadingState({ message, elapsed }: { message: string; elapsed: number }) {
   return (
     <section className="panel search-loading-panel fade-in" aria-busy="true">
-      <div className="section-title">
-        <div>
-          <h3>Searching Candidates</h3>
-          <span>{message}</span>
-        </div>
-        <div className="search-live-indicator">
-          <span />
-          <strong>{message}</strong>
-        </div>
+      <div className="loader-stage-container">
+        <div className="loader-stage-spinner" />
+        <div className="loader-stage-text">{message}</div>
+        <div className="loader-stage-elapsed">{elapsed} seconds elapsed</div>
       </div>
       <div className="search-skeleton-table" aria-hidden="true">
         <div className="search-skeleton-head">

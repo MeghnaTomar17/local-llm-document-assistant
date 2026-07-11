@@ -11,6 +11,7 @@ from backend.llm_sql.schemas import RecruiterResumeResult, RecruiterSearchRespon
 from backend.llm_sql.services.sql_executor import SQLExecutor
 from backend.llm_sql.services.sql_generator import SQLGenerationResult, SQLGenerator
 from backend.llm_sql.services.sql_validator import SQLValidationResult, SQLValidator, get_database_schema_metadata
+from backend.llm_sql.services.requirement_preprocessor import preprocess_requirement
 from database.crud import create_search_history
 
 
@@ -52,33 +53,39 @@ class RecruiterSearchService:
         self.generator = generator or SQLGenerator(validator=self.validator)
         self.executor = executor or SQLExecutor()
 
-    def search(self, question: str, session_id: UUID | str | None = None) -> RecruiterSearchResponse:
-        clean_question = str(question or "").strip()
+    def search(
+        self,
+        question: str,
+        session_id: UUID | str | None = None,
+        candidate_type: str | None = None,
+    ) -> RecruiterSearchResponse:
+        started_all = time.perf_counter()
+
+        # 1. Preprocess requirement
+        raw_prompt_size = len(question or "")
+        clean_question = preprocess_requirement(question)
+        cleaned_prompt_size = len(clean_question)
+
         normalized_q = normalize_question(clean_question)
-        logger.info("Starting recruiter search query=%s normalized=%s", clean_question, normalized_q)
+        logger.info(
+            "Starting recruiter search raw_prompt_size=%d cleaned_prompt_size=%d",
+            raw_prompt_size,
+            cleaned_prompt_size,
+        )
 
         cached_generation = self._cached_generation(normalized_q)
 
+        gen_start = time.perf_counter()
         if cached_generation:
             generation = cached_generation
             validation = generation.validation
-            logger.info("SQL cache hit for query=%s sql=%s", clean_question, generation.sql)
+            logger.info("SQL cache hit for preprocessed query")
         else:
             generation = self.generator.generate(clean_question)
-            logger.info(
-                "SQL generation completed latency_seconds=%.3f sql=%s",
-                generation.latency_seconds,
-                generation.sql,
-            )
             validation = generation.validation
             if validation.is_valid:
                 self._cache_generation(normalized_q, generation.sql, validation)
-
-        logger.info(
-            "SQL validation completed is_valid=%s errors=%s",
-            validation.is_valid,
-            validation.errors,
-        )
+        gen_time = time.perf_counter() - gen_start
 
         if not validation.is_valid:
             logger.warning(
@@ -88,26 +95,42 @@ class RecruiterSearchService:
             )
             raise SQLSearchValidationError(validation.errors, generation.sql)
 
+        exec_start = time.perf_counter()
         execution = self.executor.execute(validation)
+        exec_time = time.perf_counter() - exec_start
+
+        rank_start = time.perf_counter()
+        results = self._recruiter_results(execution.rows, generation.sql, candidate_type)
+        rank_time = time.perf_counter() - rank_start
+
+        total_time = time.perf_counter() - started_all
 
         logger.info(
-            "Recruiter search completed question=%s sql=%s row_count=%s execution_time_ms=%.2f",
-            clean_question,
-            execution.generated_sql,
-            execution.row_count,
-            execution.execution_time_ms,
+            "Recruiter search performance metrics: "
+            "Raw Prompt Size (characters): %d | "
+            "Cleaned Prompt Size (characters): %d | "
+            "SQL Generation Time: %.3fs | "
+            "SQL Execution Time: %.3fs | "
+            "Ranking Time: %.3fs | "
+            "Total Time: %.3fs",
+            raw_prompt_size,
+            cleaned_prompt_size,
+            gen_time,
+            exec_time,
+            rank_time,
+            total_time,
         )
 
         response = RecruiterSearchResponse(
-            question=clean_question,
+            question=question,
             generated_sql=execution.generated_sql,
             row_count=execution.row_count,
             execution_time_ms=execution.execution_time_ms,
-            results=self._recruiter_results(execution.rows),
+            results=results,
+            model_used=generation.model or SEARCH_MODEL_USED,
         )
 
         self._store_history(response, session_id)
-
         return response
 
     @staticmethod
@@ -163,11 +186,133 @@ class RecruiterSearchService:
         )
 
     @staticmethod
-    def _recruiter_results(rows: list[dict]) -> list[RecruiterResumeResult | dict]:
-        return [
-            RecruiterSearchService._recruiter_result(row)
-            for row in rows
-        ]
+    def _recruiter_results(
+        rows: list[dict],
+        generated_sql: str = "",
+        candidate_type: str | None = None,
+    ) -> list[RecruiterResumeResult | dict]:
+        resume_ids = []
+        for r in rows:
+            rid = r.get("id")
+            if rid:
+                try:
+                    resume_ids.append(UUID(str(rid)))
+                except ValueError:
+                    pass
+
+        interview_map = {}
+        if resume_ids:
+            from database.connection import SessionLocal
+            from database.models import Resume
+            from sqlalchemy import select
+            db = SessionLocal()
+            try:
+                res = db.execute(select(Resume.id, Resume.interview_marked, Resume.candidate_type).where(Resume.id.in_(resume_ids))).all()
+                interview_map = {row.id: (row.interview_marked, row.candidate_type) for row in res}
+            except Exception:
+                pass
+            finally:
+                db.close()
+
+        results = []
+        for row in rows:
+            rid = row.get("id")
+            try:
+                uuid_id = UUID(str(rid)) if rid else None
+                row_copy = dict(row)
+                cached = interview_map.get(uuid_id)
+                if cached:
+                    row_copy["interview_marked"] = cached[0]
+                    row_copy["candidate_type"] = cached[1]
+                else:
+                    row_copy["interview_marked"] = False
+                    row_copy["candidate_type"] = "EXTERNAL"
+                results.append(row_copy)
+            except ValueError:
+                row_copy = dict(row)
+                row_copy["interview_marked"] = False
+                row_copy["candidate_type"] = "EXTERNAL"
+                row_copy["candidate_type"] = "EXTERNAL"
+                results.append(row_copy)
+
+        # 1. Parse ORDER BY columns
+        order_cols = []
+        if generated_sql:
+            match = re.search(
+                r"\bORDER\s+BY\s+(.*?)(?:\bLIMIT\b|$)",
+                generated_sql,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            if match:
+                order_by_text = match.group(1).strip()
+                for part in order_by_text.split(","):
+                    part_clean = part.strip().split()[0]
+                    if "." in part_clean:
+                        part_clean = part_clean.split(".")[-1]
+                    part_clean = part_clean.strip('"`')
+                    order_cols.append(part_clean.lower())
+
+        # 2. Score tie-breaker metadata
+        def get_tie_breaker_score(r: dict) -> float:
+            score = 0.0
+            if r.get("interview_marked"):
+                score += 3.0
+            if candidate_type:
+                c_type = r.get("candidate_type") or "EXTERNAL"
+                if c_type.upper() == candidate_type.upper():
+                    score += 2.0
+            if r.get("is_verified"):
+                score += 1.0
+
+            uploaded_at = r.get("uploaded_at")
+            if uploaded_at:
+                from datetime import datetime
+                dt = None
+                if isinstance(uploaded_at, str):
+                    try:
+                        dt = datetime.fromisoformat(uploaded_at.replace("Z", "+00:00"))
+                    except Exception:
+                        pass
+                elif isinstance(uploaded_at, datetime):
+                    dt = uploaded_at
+
+                if dt:
+                    now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
+                    diff = (now - dt).days
+                    if diff <= 7:
+                        score += 1.0
+                    elif diff <= 30:
+                        score += 0.5
+                    else:
+                        score += 0.1
+            return score
+
+        # 3. Sort by tie-breaker
+        if order_cols:
+            groups = []
+            current_key = None
+            current_group = []
+            for r in results:
+                key = tuple(r.get(col) for col in order_cols)
+                if current_key is None or key == current_key:
+                    current_group.append(r)
+                    current_key = key
+                else:
+                    groups.append(current_group)
+                    current_group = [r]
+                    current_key = key
+            if current_group:
+                groups.append(current_group)
+
+            ranked_results = []
+            for group in groups:
+                group.sort(key=get_tie_breaker_score, reverse=True)
+                ranked_results.extend(group)
+            results = ranked_results
+        else:
+            results.sort(key=get_tie_breaker_score, reverse=True)
+
+        return [RecruiterSearchService._recruiter_result(r) for r in results]
 
     @staticmethod
     def _recruiter_result(row: dict) -> RecruiterResumeResult | dict:

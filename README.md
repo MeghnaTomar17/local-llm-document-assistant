@@ -32,6 +32,9 @@ No cloud LLM is required. Resume files, metadata, chunks, chat history, notes, a
 - Editable metadata with verification status.
 - HR decision workflow: Pending, On Hold, Accepted, Rejected.
 - Split recruiter notes: HR Notes, Technical Notes, Final Notes.
+- Interview status workflow (Marked for Interview vs Not Marked).
+- Candidate classification pools (Internal Employee vs External Candidate).
+- Preprocessed recruiter search with EEO/Benefits stripping, template caching, and sort-preserving metadata tie-breakers.
 
 ---
 
@@ -141,6 +144,8 @@ The system extracts and stores:
 - HR Notes
 - Technical Notes
 - Final Notes
+- Interview marked flag
+- Candidate classification pool (INTERNAL / EXTERNAL)
 - Uploaded file metadata
 - Resume blob
 - Resume chunks
@@ -157,6 +162,8 @@ Recruiters can edit:
 - HR Notes
 - Technical Notes
 - Final Notes
+- Interview status
+- Candidate classification
 
 Editing candidate metadata marks the resume as verified.
 
@@ -402,6 +409,8 @@ ollama list
 | `GET` | `/resumes` | List recruiter-facing resume records |
 | `GET` | `/resumes/{id}` | Get editable resume metadata |
 | `PUT` | `/resumes/{id}` | Update editable metadata |
+| `PATCH` | `/resumes/{id}/interview` | Toggle interview marked status |
+| `PATCH` | `/resumes/{id}/candidate-type` | Update candidate classification pool |
 | `DELETE` | `/resumes/{id}` | Delete database record only |
 | `GET` | `/resumes/{id}/download` | Download resume from PostgreSQL blob |
 | `GET` | `/resumes/{id}/preview` | Preview resume inline |
@@ -432,10 +441,10 @@ ollama list
 
 ## Bulk Processing
 
-Process a folder of resumes without the web UI:
+Process a folder of resumes without the web UI (you can optionally specify `--candidate-type INTERNAL` or `--candidate-type EXTERNAL`):
 
 ```powershell
-python bulk_process.py "D:\Resume_Dataset"
+python bulk_process.py "D:\Resume_Dataset" --candidate-type INTERNAL
 ```
 
 Generated files:

@@ -58,6 +58,14 @@ def parse_arguments():
         help="Group all newly processed resumes into one RecruiterSession instead of the default one-session-per-resume workflow.",
     )
 
+    parser.add_argument(
+        "--candidate-type",
+        dest="candidate_type",
+        choices=["INTERNAL", "EXTERNAL"],
+        default="EXTERNAL",
+        help="Specify the candidate pool type for the ingested resumes.",
+    )
+
     return parser.parse_args()
 
 
@@ -117,7 +125,7 @@ def append_report(name, status, resume_id="", elapsed="", error=""):
 # Resume Processing
 # ---------------------------------------------------------------------
 
-def process_resumes(resumes, session_id=None, group_session=False):
+def process_resumes(resumes, session_id=None, group_session=False, candidate_type="EXTERNAL"):
 
     initialize_report()
 
@@ -173,6 +181,10 @@ def process_resumes(resumes, session_id=None, group_session=False):
                 document = session.document
 
                 resume_id = document.get("resume_id", "")
+
+                if resume_id:
+                    from database.crud import update_resume_candidate_type
+                    update_resume_candidate_type(resume_id, candidate_type)
 
                 elapsed = round(time.time() - start, 2)
 
@@ -356,6 +368,7 @@ def main():
         resumes,
         session_id=args.session_id,
         group_session=args.group_session,
+        candidate_type=getattr(args, "candidate_type", "EXTERNAL"),
     )
 
 

@@ -19,6 +19,8 @@ export interface ResumeListItem {
   session_id?: UUID | null;
   hr_decision?: HRDecision | null;
   decision_at?: string | null;
+  interview_marked?: boolean;
+  candidate_type?: "INTERNAL" | "EXTERNAL";
 }
 
 export interface ResumeDetail extends ResumeListItem {
@@ -64,6 +66,8 @@ export interface RecruiterSession {
   candidate_name?: string | null;
   original_file_name?: string | null;
   uploaded_at?: string | null;
+  interview_marked?: boolean | null;
+  candidate_type?: "INTERNAL" | "EXTERNAL" | null;
   document?: {
     name?: string;
     resume_id?: UUID;
@@ -91,6 +95,8 @@ export interface SearchResult {
   technical_notes?: string | null;
   final_notes?: string | null;
   uploaded_at?: string | null;
+  interview_marked?: boolean | null;
+  candidate_type?: "INTERNAL" | "EXTERNAL" | null;
   [key: string]: unknown;
 }
 

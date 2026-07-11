@@ -1,8 +1,8 @@
-import { CalendarDays, Check, CirclePause, Download, Eye, FileText, Mail, MapPin, MessageSquare, PencilLine, Phone, Pin, Save, Send, UserRound, X } from "lucide-react";
+import { CalendarDays, Check, CirclePause, Download, Eye, FileText, Mail, MapPin, MessageSquare, PencilLine, Phone, Pin, Save, Send, Target, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { askResumeQuestion, getChatHistory } from "../../services/chatApi";
 import { getApiError } from "../../services/http";
-import { getResumeDownloadUrl, getResumePreviewUrl, updateResume } from "../../services/resumeApi";
+import { getResumeDownloadUrl, getResumePreviewUrl, updateResume, patchResumeInterview, patchResumeCandidateType } from "../../services/resumeApi";
 import type { ChatMessage, HRDecision, ResumeDetail, ResumeUpdate, UUID } from "../../types";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -52,6 +52,8 @@ export function ResumeWorkspace({
   const [previewSrc, setPreviewSrc] = useState("");
   const [preparingDownload, setPreparingDownload] = useState(false);
   const [error, setError] = useState("");
+  const [savingInterview, setSavingInterview] = useState(false);
+  const [savingClassification, setSavingClassification] = useState(false);
 
   useEffect(() => {
     if (!resume.session_id) return;
@@ -119,6 +121,15 @@ export function ResumeWorkspace({
               <Badge tone={resume.fresher ? "info" : "success"}>{resume.fresher ? "Fresher" : "Experienced"}</Badge>
               <Badge tone={resume.is_verified ? "success" : "warning"}>{resume.is_verified ? "Verified" : "Needs review"}</Badge>
               <DecisionBadge decision={resume.hr_decision} />
+              {resume.interview_marked && (
+                <Badge tone="success">
+                  <Target size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+                  Interview
+                </Badge>
+              )}
+              <Badge tone={resume.candidate_type === "INTERNAL" ? "success" : "info"}>
+                {resume.candidate_type === "INTERNAL" ? "Internal" : "External"}
+              </Badge>
             </div>
           </div>
         </div>
@@ -171,6 +182,50 @@ export function ResumeWorkspace({
               Reject
             </Button>
             {savingDecision && <Loader label="Saving..." />}
+          </div>
+          <div className="interview-actions" style={{ display: "inline-flex", alignItems: "center", gap: "8px", borderLeft: "1px solid #e2e8f0", paddingLeft: "12px", marginLeft: "4px" }}>
+            <span style={{ color: "#64748b", fontSize: "0.85rem", fontWeight: 600 }}>Interview Status</span>
+            <span className="interview-status-label" style={{ fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+              {resume.interview_marked ? (
+                <span style={{ color: "#10b981", fontWeight: 500 }}>✓ Marked for Interview</span>
+              ) : (
+                <span style={{ color: "#64748b" }}>○ Not Marked</span>
+              )}
+            </span>
+            <Button
+              variant={resume.interview_marked ? "secondary" : "primary"}
+              icon={resume.interview_marked ? <X size={14} /> : <Target size={14} />}
+              disabled={savingInterview}
+              onClick={handleToggleInterview}
+            >
+              {resume.interview_marked ? "Remove Interview Mark" : "Mark for Interview"}
+            </Button>
+            {savingInterview && <Loader label="" />}
+          </div>
+          <div className="candidate-classification-actions" style={{ display: "inline-flex", alignItems: "center", gap: "8px", borderLeft: "1px solid #e2e8f0", paddingLeft: "12px", marginLeft: "4px" }}>
+            <span style={{ color: "#64748b", fontSize: "0.85rem", fontWeight: 600 }}>Candidate Classification</span>
+            <span style={{ fontSize: "0.85rem", color: resume.candidate_type === "INTERNAL" ? "#10b981" : "#0284c7", fontWeight: 500 }}>
+              {resume.candidate_type === "INTERNAL" ? "Internal Employee" : "External Candidate"}
+            </span>
+            <div className="segmented-control">
+              <button
+                type="button"
+                className={`segment-btn ${resume.candidate_type === "INTERNAL" ? "active" : ""}`}
+                disabled={savingClassification}
+                onClick={() => handleUpdateCandidateType("INTERNAL")}
+              >
+                Internal Employee
+              </button>
+              <button
+                type="button"
+                className={`segment-btn ${resume.candidate_type === "EXTERNAL" || !resume.candidate_type ? "active" : ""}`}
+                disabled={savingClassification}
+                onClick={() => handleUpdateCandidateType("EXTERNAL")}
+              >
+                External Candidate
+              </button>
+            </div>
+            {savingClassification && <Loader label="" />}
           </div>
         </div>
       </div>
@@ -274,6 +329,52 @@ export function ResumeWorkspace({
       setError(getApiError(err));
     } finally {
       setSavingDecision(false);
+    }
+  }
+
+
+  async function handleToggleInterview() {
+    if (savingInterview) return;
+    const nextVal = !resume.interview_marked;
+
+    const optimisticResume = { ...resume, interview_marked: nextVal };
+    onResumeSaved(optimisticResume);
+
+    setSavingInterview(true);
+    setError("");
+    try {
+      const response = await patchResumeInterview(resume.id as UUID, nextVal);
+      onResumeSaved(response);
+      onNotify(nextVal ? "Candidate marked for interview." : "Removed interview mark.");
+    } catch (err) {
+      onResumeSaved(resume);
+      setError(getApiError(err));
+      onNotify("Failed to update interview status.");
+    } finally {
+      setSavingInterview(false);
+    }
+  }
+
+
+  async function handleUpdateCandidateType(type: "INTERNAL" | "EXTERNAL") {
+    if (savingClassification || resume.candidate_type === type) return;
+    const oldType = resume.candidate_type || "EXTERNAL";
+
+    const optimisticResume = { ...resume, candidate_type: type };
+    onResumeSaved(optimisticResume);
+
+    setSavingClassification(true);
+    setError("");
+    try {
+      const response = await patchResumeCandidateType(resume.id as UUID, type);
+      onResumeSaved(response);
+      onNotify(`Classification updated: ${type === "INTERNAL" ? "Internal Employee" : "External Candidate"}.`);
+    } catch (err) {
+      onResumeSaved({ ...resume, candidate_type: oldType });
+      setError(getApiError(err));
+      onNotify("Failed to update candidate classification.");
+    } finally {
+      setSavingClassification(false);
     }
   }
 

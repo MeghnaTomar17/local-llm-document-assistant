@@ -29,3 +29,17 @@ export function getResumePreviewUrl(id: UUID): string {
   const baseURL = api.defaults.baseURL || "";
   return `${baseURL}/resumes/${id}/preview`;
 }
+
+export async function patchResumeInterview(id: UUID, interviewMarked: boolean): Promise<ResumeDetail> {
+  const response = await api.patch<ResumeDetail>(`/resumes/${id}/interview`, {
+    interview_marked: interviewMarked,
+  });
+  return response.data;
+}
+
+export async function patchResumeCandidateType(id: UUID, candidateType: "INTERNAL" | "EXTERNAL"): Promise<ResumeDetail> {
+  const response = await api.patch<ResumeDetail>(`/resumes/${id}/candidate-type`, {
+    candidate_type: candidateType,
+  });
+  return response.data;
+}

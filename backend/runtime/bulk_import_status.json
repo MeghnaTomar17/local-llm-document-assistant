@@ -1,27 +1,18 @@
 {
-  "state": "INTERRUPTED",
+  "state": "COMPLETED",
   "running": false,
   "processed": 2,
-  "total": 4,
+  "total": 2,
   "failed": 0,
-  "duplicates": 1,
-  "duplicate_warnings": [
-    {
-      "file_name": "B.Karishma_2025 2 (1).pdf",
-      "candidate_name": "B. Karishma",
-      "email": "karishmabaskaran@gmail.com",
-      "phone": "+91 908085540",
-      "reason": "File Hash",
-      "timestamp": "2026-07-09T05:24:08.629550+00:00"
-    }
-  ],
-  "current_file": "Balan-Gunasekaran-GIS Analyst.pdf",
-  "last_completed_file": "",
-  "message": "Bulk import was interrupted by user (KeyboardInterrupt).",
-  "started_at": "2026-07-09T05:24:08.414569+00:00",
-  "updated_at": "2026-07-09T05:26:26.578108+00:00",
-  "finished_at": null,
-  "interrupted": true,
-  "interrupted_at": "2026-07-09T05:26:26.577569+00:00",
-  "pid": 34396
+  "duplicates": 0,
+  "duplicate_warnings": [],
+  "current_file": "",
+  "last_completed_file": "Bhumika_Goyal_Updated_Resume_1725527820524_Bhumika Goyal.pdf",
+  "message": "Bulk import finished. 2 of 2 resumes processed.",
+  "started_at": "2026-07-11T10:47:10.496570+00:00",
+  "updated_at": "2026-07-11T10:49:30.260387+00:00",
+  "finished_at": "2026-07-11T10:49:30.215400+00:00",
+  "interrupted": false,
+  "interrupted_at": null,
+  "pid": 16816
 }

@@ -16,6 +16,8 @@ from database.crud import (
     list_resumes,
     save_resume,
     update_resume_metadata,
+    update_resume_interview,
+    update_resume_candidate_type,
     normalize_name,
     normalize_email,
     normalize_phone,
@@ -167,6 +169,14 @@ def delete_resume_response(resume_id: UUID) -> bool:
     return delete_resume(resume_id)
 
 
+def update_resume_interview_status(resume_id: UUID, interview_marked: bool) -> Resume | None:
+    return update_resume_interview(resume_id, interview_marked)
+
+
+def update_resume_candidate_classification(resume_id: UUID, candidate_type: str) -> Resume | None:
+    return update_resume_candidate_type(resume_id, candidate_type)
+
+
 __all__ = [
     "IntegrityError",
     "ResumeResponse",
@@ -180,4 +190,6 @@ __all__ = [
     "list_resume_response",
     "persist_resume_metadata",
     "update_resume_response",
+    "update_resume_interview_status",
+    "update_resume_candidate_classification",
 ]

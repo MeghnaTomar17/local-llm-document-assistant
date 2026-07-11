@@ -33,6 +33,8 @@ class ResumeResponse(BaseModel):
     final_notes: str | None = None
     hr_decision: HRDecision = "PENDING"
     decision_at: datetime | None = None
+    interview_marked: bool = False
+    candidate_type: str = "EXTERNAL"
     uploaded_at: datetime
     updated_at: datetime
 
@@ -50,6 +52,18 @@ class ResumeUpdate(BaseModel):
     technical_notes: str | None = None
     final_notes: str | None = None
     hr_decision: HRDecision | None = None
+
+
+class ResumeInterviewUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    interview_marked: bool
+
+
+class ResumeCandidateTypeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_type: Literal["INTERNAL", "EXTERNAL"]
 
 
 class ResumeListItem(BaseModel):
@@ -73,6 +87,8 @@ class ResumeListItem(BaseModel):
     final_notes: str | None = None
     hr_decision: HRDecision = "PENDING"
     decision_at: datetime | None = None
+    interview_marked: bool = False
+    candidate_type: str = "EXTERNAL"
     uploaded_at: datetime
     updated_at: datetime
 

@@ -156,6 +156,8 @@ psql -U postgres -d resume_platform -f database/migrations/007_create_resume_chu
 psql -U postgres -d resume_platform -f database/migrations/008_add_resume_chunks_unique_constraint.sql
 psql -U postgres -d resume_platform -f database/migrations/009_add_hr_decision.sql
 psql -U postgres -d resume_platform -f database/migrations/010_extend_reviewer_workflow.sql
+psql -U postgres -d resume_platform -f database/migrations/011_add_interview_marked.sql
+psql -U postgres -d resume_platform -f database/migrations/012_add_candidate_type.sql
 ```
 
 These migrations add:
@@ -170,6 +172,8 @@ These migrations add:
 - HR decisions
 - On Hold decision status
 - HR Notes, Technical Notes, and Final Notes
+- Interview marked flag (marked/unmarked)
+- Candidate Classification pool (INTERNAL / EXTERNAL)
 
 If PostgreSQL says a column, index, or table already exists, continue with the next migration unless the command stops with a serious error.
 
@@ -294,10 +298,10 @@ cd frontend
 npm run build
 ```
 
-Process resumes from a folder:
+Process resumes from a folder (with optional candidate classification: INTERNAL or EXTERNAL):
 
 ```powershell
-python bulk_process.py "D:\Resume_Dataset"
+python bulk_process.py "D:\Resume_Dataset" --candidate-type INTERNAL
 ```
 
 ---

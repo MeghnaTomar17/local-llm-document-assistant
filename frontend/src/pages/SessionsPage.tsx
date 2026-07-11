@@ -1,4 +1,4 @@
-import { Database, FileText, MapPin, MessageSquare, Search, UserRound } from "lucide-react";
+import { Database, FileText, MapPin, MessageSquare, Search, Target, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ResumeWorkspace } from "../components/resume/ResumeWorkspace";
 import { useAppData } from "../context/AppContext";
@@ -17,16 +17,33 @@ export function SessionsPage() {
   const [workspaceError, setWorkspaceError] = useState("");
   const [switchingSessionId, setSwitchingSessionId] = useState<UUID | null>(null);
   const [openingResumeId, setOpeningResumeId] = useState<UUID | null>(null);
+  const [classificationFilter, setClassificationFilter] = useState<"ALL" | "INTERNAL" | "EXTERNAL">(() => {
+    return (localStorage.getItem("sessions_classification_filter") as "ALL" | "INTERNAL" | "EXTERNAL") || "ALL";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sessions_classification_filter", classificationFilter);
+  }, [classificationFilter]);
+
   const [workspaceRestoreStep, setWorkspaceRestoreStep] = useState("");
   const searchTerm = candidateSearch.trim().toLowerCase();
-  const displayedSessions = searchTerm
-    ? sessions.filter((session) => sessionSearchText(session).includes(searchTerm))
-    : sessions;
+  const displayedSessions = sessions.filter((session) => {
+    if (searchTerm && !sessionSearchText(session).includes(searchTerm)) return false;
+    const type = session.candidate_type || "EXTERNAL";
+    if (classificationFilter === "INTERNAL") return type === "INTERNAL";
+    if (classificationFilter === "EXTERNAL") return type === "EXTERNAL";
+    return true;
+  });
 
   const resumeColumns: TableColumn<ResumeListItem>[] = [
     { key: "candidate", header: "Candidate", className: "candidate-column", render: (row) => row.candidate_name || row.original_file_name || "Unnamed" },
     { key: "skills", header: "Skills", className: "skills-column", render: (row) => <SkillChips skills={row.skills || []} /> },
-    { key: "decision", header: "Decision", className: "decision-column", render: (row) => <DecisionBadge decision={row.hr_decision} /> },
+    { key: "decision", header: "Decision", className: "decision-column", render: (row) => (
+      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+        <DecisionBadge decision={row.hr_decision} />
+        {row.interview_marked && <Badge tone="info"><Target size={12} /> Interview</Badge>}
+      </div>
+    ) },
     { key: "status", header: "Status", className: "status-column", render: (row) => <Badge tone={row.processing_status === "completed" ? "success" : "neutral"}>{row.processing_status || "Stored"}</Badge> },
   ];
 
@@ -52,8 +69,31 @@ export function SessionsPage() {
 
       <section className="split-layout sessions-layout">
         <div className="panel">
-          <div className="section-title">
-            <h3>Sessions ({sessions.length})</h3>
+          <div className="section-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+            <h3>Sessions ({displayedSessions.length})</h3>
+            <div className="segmented-control">
+              <button
+                type="button"
+                className={`segment-btn ${classificationFilter === "ALL" ? "active" : ""}`}
+                onClick={() => setClassificationFilter("ALL")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`segment-btn ${classificationFilter === "INTERNAL" ? "active" : ""}`}
+                onClick={() => setClassificationFilter("INTERNAL")}
+              >
+                Internal
+              </button>
+              <button
+                type="button"
+                className={`segment-btn ${classificationFilter === "EXTERNAL" ? "active" : ""}`}
+                onClick={() => setClassificationFilter("EXTERNAL")}
+              >
+                External
+              </button>
+            </div>
           </div>
           <div className="session-search">
             <Search size={17} />
@@ -474,11 +514,34 @@ function SessionButton({
   const primaryCity = primarySessionCity(session);
 
   return (
-    <button className={`session-row ${active ? "is-active" : ""}`} disabled={disabled} onClick={onClick}>
+    <div
+      role="button"
+      tabIndex={0}
+      className={`session-row ${active ? "is-active" : ""}`}
+      style={{ cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.7 : 1 }}
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <strong><UserRound size={15} /> {candidateName} {loading && <Loader label="" />}</strong>
       <span>{primaryCity ? <><MapPin size={13} /> {primaryCity}</> : <><FileText size={13} /> {session.document_count || 0} resume{(session.document_count || 0) === 1 ? "" : "s"}</>}</span>
-      <span><MessageSquare size={13} /> {session.message_count || 0} chats <DecisionBadge decision={session.hr_decision} compact /></span>
-    </button>
+      <span style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+        <MessageSquare size={13} /> {session.message_count || 0} chats
+        <DecisionBadge decision={session.hr_decision} compact />
+        {session.interview_marked && (
+          <Badge tone="success">
+            <Target size={11} /> Interview
+          </Badge>
+        )}
+        <Badge tone={session.candidate_type === "INTERNAL" ? "success" : "info"}>
+          {session.candidate_type === "INTERNAL" ? "Internal" : "External"}
+        </Badge>
+      </span>
+    </div>
   );
 }
 
