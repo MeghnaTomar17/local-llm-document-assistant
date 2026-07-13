@@ -2,23 +2,30 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
+import os
 import re
 from threading import RLock
 import time
 from uuid import UUID
 
 from backend.llm_sql.schemas import RecruiterResumeResult, RecruiterSearchResponse
-from backend.llm_sql.services.sql_executor import SQLExecutor
+from backend.llm_sql.services.candidate_ranker import CandidateRanker
+from backend.llm_sql.services.query_relaxer import QueryRelaxer
+from backend.llm_sql.services.search_debug import SearchDebugWriter
+from backend.llm_sql.services.sql_executor import SQLExecutionResult, SQLExecutor
 from backend.llm_sql.services.sql_generator import SQLGenerationResult, SQLGenerator
 from backend.llm_sql.services.sql_validator import SQLValidationResult, SQLValidator, get_database_schema_metadata
 from backend.llm_sql.services.requirement_preprocessor import preprocess_requirement
+from backend.llm_sql.services.requirement_extractor import RequirementExtractor
+from backend.llm_sql.services.requirement_validator import RequirementValidator
 from database.crud import create_search_history
 
 
 logger = logging.getLogger(__name__)
-SEARCH_MODEL_USED = "qwen2.5-coder"
+DEBUG_SEARCH = os.getenv("RECRUITER_SEARCH_DEBUG", "1").strip().lower() in {"1", "true", "yes", "on"}
+SEARCH_MODEL_USED = "llama-requirement-extractor + deterministic-sql-builder"
 
-_sql_cache: OrderedDict[str, tuple[float, str, SQLValidationResult]] = OrderedDict()
+_sql_cache: OrderedDict[str, tuple[float, str, SQLValidationResult, str, dict]] = OrderedDict()
 _sql_cache_lock = RLock()
 SQL_CACHE_TTL = 30.0
 SQL_CACHE_MAX_SIZE = 128
@@ -29,6 +36,11 @@ def normalize_question(q: str) -> str:
     q = re.sub(r"[?.,!]", "", q)
     q = re.sub(r"\s+", " ", q).strip()
     return q
+
+
+def normalize_candidate_type(candidate_type: str | None) -> str | None:
+    value = str(candidate_type or "").strip().upper()
+    return value if value in {"INTERNAL", "EXTERNAL"} else None
 
 
 class SQLSearchValidationError(ValueError):
@@ -48,10 +60,18 @@ class RecruiterSearchService:
         generator: SQLGenerator | None = None,
         validator: SQLValidator | None = None,
         executor: SQLExecutor | None = None,
+        extractor: RequirementExtractor | None = None,
+        requirement_validator: RequirementValidator | None = None,
+        query_relaxer: QueryRelaxer | None = None,
+        ranker: CandidateRanker | None = None,
     ) -> None:
         self.validator = validator or SQLValidator()
         self.generator = generator or SQLGenerator(validator=self.validator)
         self.executor = executor or SQLExecutor()
+        self.extractor = extractor or RequirementExtractor()
+        self.requirement_validator = requirement_validator or RequirementValidator()
+        self.query_relaxer = query_relaxer or QueryRelaxer()
+        self.ranker = ranker or CandidateRanker()
 
     def search(
         self,
@@ -60,113 +80,205 @@ class RecruiterSearchService:
         candidate_type: str | None = None,
     ) -> RecruiterSearchResponse:
         started_all = time.perf_counter()
+        if DEBUG_SEARCH:
+            logger.info("Recruiter search query initiated: %s", str(question).encode("ascii", "ignore").decode("ascii"))
 
-        # 1. Preprocess requirement
-        raw_prompt_size = len(question or "")
+        debug = SearchDebugWriter(DEBUG_SEARCH)
+
+        # 1. Stage 1: Requirement Cleaning
+        t1_start = time.perf_counter()
         clean_question = preprocess_requirement(question)
-        cleaned_prompt_size = len(clean_question)
+        t1_end = time.perf_counter()
+        cleaning_ms = (t1_end - t1_start) * 1000
 
-        normalized_q = normalize_question(clean_question)
-        logger.info(
-            "Starting recruiter search raw_prompt_size=%d cleaned_prompt_size=%d",
-            raw_prompt_size,
-            cleaned_prompt_size,
-        )
+        # 2. Stage 2: Requirement Extraction (LLM)
+        t2_start = time.perf_counter()
+        raw_json = self.extractor.extract(clean_question)
+        t2_end = time.perf_counter()
+        extraction_ms = (t2_end - t2_start) * 1000
 
-        cached_generation = self._cached_generation(normalized_q)
+        # 3. Stage 3: Skill Normalization
+        t3_start = time.perf_counter()
+        extracted_data = self.requirement_validator.validate_and_clean(raw_json)
+        normalized_candidate_type = normalize_candidate_type(candidate_type)
+        if normalized_candidate_type:
+            extracted_data["candidate_type"] = normalized_candidate_type
+        t3_end = time.perf_counter()
+        normalization_ms = (t3_end - t3_start) * 1000
 
-        gen_start = time.perf_counter()
-        if cached_generation:
-            generation = cached_generation
-            validation = generation.validation
-            logger.info("SQL cache hit for preprocessed query")
-        else:
-            generation = self.generator.generate(clean_question)
-            validation = generation.validation
-            if validation.is_valid:
-                self._cache_generation(normalized_q, generation.sql, validation)
-        gen_time = time.perf_counter() - gen_start
+        # 4. Stage 4: SQL Generation
+        t4_start = time.perf_counter()
+        generation = self.generator.generate(extracted_data)
+        sql = generation.sql
+        t4_end = time.perf_counter()
+        sql_generation_ms = (t4_end - t4_start) * 1000
+
+        # 5. Stage 5: SQL Validation
+        t5_start = time.perf_counter()
+        validation = generation.validation
+        t5_end = time.perf_counter()
+        sql_validation_ms = (t5_end - t5_start) * 1000
 
         if not validation.is_valid:
-            logger.warning(
-                "Generated SQL failed validation errors=%s sql=%s",
-                validation.errors,
-                generation.sql,
-            )
-            raise SQLSearchValidationError(validation.errors, generation.sql)
+            logger.warning("Generated SQL failed validation: %s", validation.errors)
+            raise SQLSearchValidationError(validation.errors, sql)
 
-        exec_start = time.perf_counter()
+        # 6. Stage 6: Database Retrieval with Fallback
+        t6_start = time.perf_counter()
         execution = self.executor.execute(validation)
-        exec_time = time.perf_counter() - exec_start
+        
+        # Deterministic retrieval fallback if no rows returned
+        if execution.row_count == 0:
+            logger.info("Database retrieval returned 0 rows. Running deterministic fallback query...")
+            # Fallback 1: Relax hard filters (interview_marked, verified_only, candidate_type, fresher)
+            relaxed_requirement = dict(extracted_data)
+            relaxed_requirement["candidate_type"] = None
+            relaxed_requirement["verified_only"] = None
+            relaxed_requirement["interview_marked"] = None
+            relaxed_requirement["fresher"] = None
+            
+            relaxed_sql = self.generator.builder.build_sql(relaxed_requirement)
+            relaxed_val = self.validator.validate(relaxed_sql)
+            logger.info("Fallback Stage 1: Relaxing hard filters. SQL: %s", relaxed_sql)
+            execution = self.executor.execute(relaxed_val)
+            
+            # Fallback 2: Relax locations
+            if execution.row_count == 0:
+                logger.info("Fallback Stage 1 returned 0 rows. Fallback Stage 2: Relaxing locations...")
+                relaxed_requirement["cities"] = []
+                relaxed_requirement["locations"] = []
+                relaxed_sql = self.generator.builder.build_sql(relaxed_requirement)
+                relaxed_val = self.validator.validate(relaxed_sql)
+                logger.info("Fallback Stage 2: Relaxing locations. SQL: %s", relaxed_sql)
+                execution = self.executor.execute(relaxed_val)
+                
+            # Fallback 3: Return all candidates up to limit
+            if execution.row_count == 0:
+                logger.info("Fallback Stage 2 returned 0 rows. Fallback Stage 3: Fetching all resumes...")
+                fallback_sql = f"SELECT {RECRUITER_COLUMNS}\nFROM resumes\nLIMIT {self.generator.builder.limit};"
+                fallback_val = self.validator.validate(fallback_sql)
+                execution = self.executor.execute(fallback_val)
+                
+        t6_end = time.perf_counter()
+        sql_execution_ms = (t6_end - t6_start) * 1000
 
-        rank_start = time.perf_counter()
-        results = self._recruiter_results(execution.rows, generation.sql, candidate_type)
-        rank_time = time.perf_counter() - rank_start
-
-        total_time = time.perf_counter() - started_all
-
-        logger.info(
-            "Recruiter search performance metrics: "
-            "Raw Prompt Size (characters): %d | "
-            "Cleaned Prompt Size (characters): %d | "
-            "SQL Generation Time: %.3fs | "
-            "SQL Execution Time: %.3fs | "
-            "Ranking Time: %.3fs | "
-            "Total Time: %.3fs",
-            raw_prompt_size,
-            cleaned_prompt_size,
-            gen_time,
-            exec_time,
-            rank_time,
-            total_time,
+        # 7. Stage 7: Candidate Matching
+        t7_start = time.perf_counter()
+        results = self._recruiter_results(
+            execution.rows,
+            generated_sql=execution.generated_sql,
+            candidate_type=candidate_type,
+            requirement=extracted_data,
         )
+        t7_end = time.perf_counter()
+        matching_ms = (t7_end - t7_start) * 1000
+
+        # 8. Stage 8: API Response & Stage Timing Logs
+        total_time = (t7_end - t1_start)
+        
+        normalized_skills = self.generator.builder.get_normalized_skills(extracted_data) if hasattr(self.generator, "builder") else []
+        
+        logger.info("=" * 80)
+        logger.info("RECRUITER SEARCH SUMMARY & STAGE TIMINGS")
+        logger.info("=" * 80)
+        logger.info("Requirement Cleaning    : %.1f ms", cleaning_ms)
+        logger.info("Requirement Extraction  : %.2f s", extraction_ms / 1000)
+        logger.info("Normalization           : %.1f ms", normalization_ms)
+        logger.info("SQL Generation          : %.1f ms", sql_generation_ms)
+        logger.info("SQL Validation          : %.1f ms", sql_validation_ms)
+        logger.info("SQL Execution           : %.1f ms", sql_execution_ms)
+        logger.info("Matching                : %.1f ms", matching_ms)
+        logger.info("Total                   : %.2f s", total_time)
+        logger.info("-" * 80)
+        
+        import json
+        logger.info("Extracted Requirement JSON:\n%s", json.dumps(extracted_data, indent=2))
+        logger.info("Normalized Skills: %s", normalized_skills)
+        logger.info("Generated SQL:\n%s", execution.generated_sql)
+        logger.info("SQL Row Count: %d", execution.row_count)
+        logger.info("-" * 80)
+        logger.info("Matched & Missing Skills per Candidate:")
+        for idx, res in enumerate(results[:25]): # limit to top 25 to avoid log bloat
+            if hasattr(res, "candidate_name"):
+                candidate_name = res.candidate_name
+                matched = res.matched_skills
+                missing = res.missing_skills
+            elif isinstance(res, dict):
+                candidate_name = res.get("candidate_name")
+                matched = res.get("matched_skills", [])
+                missing = res.get("missing_skills", [])
+            else:
+                candidate_name = getattr(res, "candidate_name", "Unknown")
+                matched = getattr(res, "matched_skills", [])
+                missing = getattr(res, "missing_skills", [])
+
+            logger.info("  %d. Candidate: %-25s | Matched Skills: %s | Missing Skills: %s", idx + 1, candidate_name or "Unnamed", matched, missing)
+        logger.info("=" * 80)
 
         response = RecruiterSearchResponse(
             question=question,
             generated_sql=execution.generated_sql,
             row_count=execution.row_count,
-            execution_time_ms=execution.execution_time_ms,
+            execution_time_ms=total_time * 1000,
             results=results,
-            model_used=generation.model or SEARCH_MODEL_USED,
+            model_used="Deterministic SQL Builder",
+            requirement_analysis=extracted_data,
+            debug_report_path=debug.path,
+            relaxation_attempts=[],
         )
 
         self._store_history(response, session_id)
         return response
 
     @staticmethod
-    def _cached_generation(normalized_question: str) -> SQLGenerationResult | None:
-        if not normalized_question:
-            return None
-        now = time.time()
-        with _sql_cache_lock:
-            cached = _sql_cache.get(normalized_question)
-            if not cached:
-                return None
-
-            cached_at, sql, validation = cached
-            if now - cached_at >= SQL_CACHE_TTL:
-                del _sql_cache[normalized_question]
-                return None
-
-            _sql_cache.move_to_end(normalized_question)
-            generation = SQLGenerationResult(
-                sql=sql,
-                validation=validation,
-                model=SEARCH_MODEL_USED,
-                latency_seconds=0.0,
-            )
-            return generation
+    def _cached_generation(normalized_question: str) -> tuple[SQLGenerationResult, dict] | None:
+        # Caching disabled to guarantee real-time query alignment with dynamic DB state
+        return None
 
     @staticmethod
-    def _cache_generation(normalized_question: str, sql: str, validation: SQLValidationResult) -> None:
-        if not normalized_question or not validation.is_valid:
-            return
+    def _cache_generation(
+        normalized_question: str,
+        sql: str,
+        validation: SQLValidationResult,
+        model: str | None = None,
+        requirement: dict | None = None,
+    ) -> None:
+        # Caching disabled to guarantee real-time query alignment with dynamic DB state
+        return
 
-        with _sql_cache_lock:
-            _sql_cache[normalized_question] = (time.time(), sql, validation)
-            _sql_cache.move_to_end(normalized_question)
-            while len(_sql_cache) > SQL_CACHE_MAX_SIZE:
-                _sql_cache.popitem(last=False)
+    def _execute_relaxed_searches(
+        self,
+        extracted_data: dict,
+    ) -> tuple[SQLExecutionResult | None, SQLValidationResult | None, list[dict]]:
+        attempts_log: list[dict] = []
+        for attempt in self.query_relaxer.attempts(extracted_data):
+            validation = self.validator.validate(attempt.sql)
+            attempt_log = {
+                "label": attempt.label,
+                "reason": attempt.reason,
+                "sql": attempt.sql,
+                "valid": validation.is_valid,
+                "errors": validation.errors,
+                "row_count": 0,
+            }
+            if not validation.is_valid:
+                attempts_log.append(attempt_log)
+                continue
+
+            execution = self.executor.execute(validation)
+            attempt_log["row_count"] = execution.row_count
+            attempt_log["execution_time_ms"] = execution.execution_time_ms
+            attempts_log.append(attempt_log)
+
+            if execution.row_count > 0:
+                logger.info(
+                    "Relaxed recruiter search succeeded attempt=%s row_count=%d",
+                    attempt.label,
+                    execution.row_count,
+                )
+                return execution, validation, attempts_log
+
+        return None, None, attempts_log
 
     @staticmethod
     def _store_history(response: RecruiterSearchResponse, session_id: UUID | str | None) -> None:
@@ -181,15 +293,16 @@ class RecruiterSearchService:
                     for result in response.results
                 ],
                 "execution_time_ms": response.execution_time_ms,
-                "model_used": SEARCH_MODEL_USED,
+                "model_used": response.model_used or SEARCH_MODEL_USED,
             }
         )
 
-    @staticmethod
     def _recruiter_results(
+        self,
         rows: list[dict],
         generated_sql: str = "",
         candidate_type: str | None = None,
+        requirement: dict | None = None,
     ) -> list[RecruiterResumeResult | dict]:
         resume_ids = []
         for r in rows:
@@ -209,8 +322,8 @@ class RecruiterSearchService:
             try:
                 res = db.execute(select(Resume.id, Resume.interview_marked, Resume.candidate_type).where(Resume.id.in_(resume_ids))).all()
                 interview_map = {row.id: (row.interview_marked, row.candidate_type) for row in res}
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Could not enrich recruiter results with interview metadata: %s", exc)
             finally:
                 db.close()
 
@@ -232,7 +345,6 @@ class RecruiterSearchService:
                 row_copy = dict(row)
                 row_copy["interview_marked"] = False
                 row_copy["candidate_type"] = "EXTERNAL"
-                row_copy["candidate_type"] = "EXTERNAL"
                 results.append(row_copy)
 
         # 1. Parse ORDER BY columns
@@ -252,65 +364,7 @@ class RecruiterSearchService:
                     part_clean = part_clean.strip('"`')
                     order_cols.append(part_clean.lower())
 
-        # 2. Score tie-breaker metadata
-        def get_tie_breaker_score(r: dict) -> float:
-            score = 0.0
-            if r.get("interview_marked"):
-                score += 3.0
-            if candidate_type:
-                c_type = r.get("candidate_type") or "EXTERNAL"
-                if c_type.upper() == candidate_type.upper():
-                    score += 2.0
-            if r.get("is_verified"):
-                score += 1.0
-
-            uploaded_at = r.get("uploaded_at")
-            if uploaded_at:
-                from datetime import datetime
-                dt = None
-                if isinstance(uploaded_at, str):
-                    try:
-                        dt = datetime.fromisoformat(uploaded_at.replace("Z", "+00:00"))
-                    except Exception:
-                        pass
-                elif isinstance(uploaded_at, datetime):
-                    dt = uploaded_at
-
-                if dt:
-                    now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
-                    diff = (now - dt).days
-                    if diff <= 7:
-                        score += 1.0
-                    elif diff <= 30:
-                        score += 0.5
-                    else:
-                        score += 0.1
-            return score
-
-        # 3. Sort by tie-breaker
-        if order_cols:
-            groups = []
-            current_key = None
-            current_group = []
-            for r in results:
-                key = tuple(r.get(col) for col in order_cols)
-                if current_key is None or key == current_key:
-                    current_group.append(r)
-                    current_key = key
-                else:
-                    groups.append(current_group)
-                    current_group = [r]
-                    current_key = key
-            if current_group:
-                groups.append(current_group)
-
-            ranked_results = []
-            for group in groups:
-                group.sort(key=get_tie_breaker_score, reverse=True)
-                ranked_results.extend(group)
-            results = ranked_results
-        else:
-            results.sort(key=get_tie_breaker_score, reverse=True)
+        results = self.ranker.rank(results, requirement or {}, candidate_type, order_cols)
 
         return [RecruiterSearchService._recruiter_result(r) for r in results]
 

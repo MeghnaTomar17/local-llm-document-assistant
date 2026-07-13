@@ -1,2 +1,1 @@
-"""Benchmark helpers for natural-language SQL generation."""
-
+"""Legacy benchmark package retained for import compatibility."""

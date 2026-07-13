@@ -97,6 +97,12 @@ export interface SearchResult {
   uploaded_at?: string | null;
   interview_marked?: boolean | null;
   candidate_type?: "INTERNAL" | "EXTERNAL" | null;
+  search_score?: number | null;
+  match_explanation?: string[] | null;
+  match_details?: Record<string, unknown> | null;
+  normalized_candidate_skills?: string[] | null;
+  matched_skills?: string[] | null;
+  missing_skills?: string[] | null;
   [key: string]: unknown;
 }
 
@@ -106,6 +112,10 @@ export interface SearchResponse {
   row_count: number;
   execution_time_ms?: number | null;
   results: SearchResult[];
+  model_used?: string | null;
+  requirement_analysis?: Record<string, unknown>;
+  debug_report_path?: string | null;
+  relaxation_attempts?: Array<Record<string, unknown>>;
 }
 
 export interface SearchHistoryItem {

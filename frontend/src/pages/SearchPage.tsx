@@ -21,7 +21,7 @@ export function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [searchStep, setSearchStep] = useState("");
-  const [showHistory, setShowHistory] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ResumeDetail | null>(null);
   const [classificationFilter, setClassificationFilter] = useState<"ALL" | "INTERNAL" | "EXTERNAL">(() => {
@@ -49,6 +49,13 @@ export function SearchPage() {
     }
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      runSearch();
+    }
+  };
+
   useEffect(() => {
     adjustHeight();
   }, [query]);
@@ -71,15 +78,26 @@ export function SearchPage() {
   const { page, pageCount, pageItems, setPage } = usePagination(filteredResults, 10);
 
   const columns: TableColumn<SearchResult>[] = [
-    { key: "candidate", header: "Candidate", className: "candidate-column", render: (row) => String(row.candidate_name || row.original_file_name || "Unnamed") },
-    { key: "email", header: "Email", className: "email-column", render: (row) => String(row.email || "-") },
-    { key: "phone", header: "Phone", className: "phone-column", render: (row) => String(row.phone_number || "-") },
-    { key: "skills", header: "Skills", className: "skills-column", render: (row) => <SkillChips value={row.skills} /> },
-    { key: "type", header: "Type", render: (row) => <Badge tone={row.fresher ? "info" : "success"}>{row.fresher ? "Fresher" : "Experienced"}</Badge> },
-    { key: "verified", header: "Verified", render: (row) => <Badge tone={row.is_verified ? "success" : "warning"}>{row.is_verified ? "Yes" : "Review"}</Badge> },
-    { key: "decision", header: "Decision", render: (row) => <DecisionBadge decision={row.hr_decision} /> },
-    { key: "interview", header: "Interview", render: (row) => row.interview_marked ? <Badge tone="success">Marked</Badge> : "—" },
-    { key: "classification", header: "Classification", render: (row) => (
+    { key: "candidate", header: "Candidate", className: "col-candidate", render: (row) => String(row.candidate_name || row.original_file_name || "Unnamed") },
+    {
+      key: "email",
+      header: "Email",
+      className: "col-email",
+      render: (row) => (
+        <span className="email-cell" title={row.email || ""}>
+          {row.email || "-"}
+        </span>
+      )
+    },
+    { key: "phone", header: "Phone", className: "col-phone", render: (row) => row.phone_number || "-" },
+    { key: "skills", header: "Skills", className: "col-skills", render: (row) => <SkillChips value={row.skills} /> },
+    { key: "matched_skills", header: "Matched Skills", className: "col-matched-skills", render: (row) => <SkillChips value={row.matched_skills} customClass="skill-chip-matched" /> },
+    { key: "missing_skills", header: "Missing Skills", className: "col-missing-skills", render: (row) => <SkillChips value={row.missing_skills} customClass="skill-chip-missing" /> },
+    { key: "type", header: "Experience", className: "col-experience", render: (row) => <Badge tone={row.fresher ? "info" : "success"}>{row.fresher ? "Fresher" : "Experienced"}</Badge> },
+    { key: "verified", header: "Verified", className: "col-verified", render: (row) => <Badge tone={row.is_verified ? "success" : "warning"}>{row.is_verified ? "Yes" : "Review"}</Badge> },
+    { key: "decision", header: "Decision", className: "col-decision", render: (row) => <DecisionBadge decision={row.hr_decision} /> },
+    { key: "interview", header: "Interview", className: "col-interview", render: (row) => row.interview_marked ? <Badge tone="success">Marked</Badge> : "-" },
+    { key: "classification", header: "Classification", className: "col-classification", render: (row) => (
       <Badge tone={row.candidate_type === "INTERNAL" ? "success" : "info"}>
         {row.candidate_type === "INTERNAL" ? "Internal" : "External"}
       </Badge>
@@ -101,8 +119,8 @@ export function SearchPage() {
     }
   }
 
-  async function runSearch() {
-    const trimmed = query.trim();
+  async function runSearch(overrideQuery?: string) {
+    const trimmed = (overrideQuery !== undefined ? overrideQuery : query).trim();
     if (!trimmed || loading) return;
 
     if (abortControllerRef.current) {
@@ -112,9 +130,8 @@ export function SearchPage() {
     const signal = abortControllerRef.current.signal;
 
     setLoading(true);
-    setSearchStep("Understanding recruiter requirements...");
     setElapsedTime(0);
-    setSearchStage(0);
+    setSearchStage(1);
     setError("");
     setSelected(null);
 
@@ -126,15 +143,12 @@ export function SearchPage() {
     const stageInterval = window.setInterval(() => {
       setSearchStage((prev) => {
         const next = prev + 1;
-        if (next === 1) setSearchStep("Generating optimized search query...");
-        if (next === 2) setSearchStep("Searching candidates...");
-        if (next === 3) setSearchStep("Ranking candidates...");
-        return Math.min(next, 3);
+        return Math.min(next, 5);
       });
-    }, 1500);
+    }, 1200);
 
     try {
-      const responseData = await recruiterSearch(trimmed, null, classificationFilter, signal);
+      const responseData = await recruiterSearch(trimmed, null, "ALL", signal);
       setResponse(responseData);
       setPage(1);
       await loadHistory();
@@ -159,9 +173,10 @@ export function SearchPage() {
       generated_sql: item.generated_sql,
       row_count: item.result_count,
       execution_time_ms: item.execution_time_ms,
-      results: item.results_snapshot || [],
+      results: item.results_snapshot,
+      model_used: item.model_used,
+      requirement_analysis: {},
     });
-    setPage(1);
   }
 
   async function openCandidate(row: SearchResult) {
@@ -194,8 +209,8 @@ export function SearchPage() {
 
       <section className={`search-layout ${showHistory ? "" : "history-hidden"}`.trim()}>
         <div className="search-panel">
-          <div className="search-filter-row" style={{ marginBottom: "12px", display: "flex", gap: "10px", alignItems: "center" }}>
-            <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 600 }}>Candidate Classification Pool:</span>
+          <div className="search-filter-row">
+            <span className="search-filter-label">Candidate Classification Pool:</span>
             <div className="segmented-control">
               <button
                 type="button"
@@ -237,12 +252,13 @@ export function SearchPage() {
                 ref={textareaRef}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder={"Paste the complete job description or hiring requirements here...\n\nExample:\nLooking for a GIS Developer with ArcGIS Enterprise, ArcPy, Python, PostGIS, REST APIs, React, Docker and 3+ years of experience..."}
                 disabled={loading}
               />
               <div className="char-counter-row">
                 <span className={`char-counter ${query.length > 4000 ? "warning" : ""}`}>
-                  {query.length} characters {query.length > 4000 ? "/ Max Limit Exceeded" : ""}
+                  {query.length} characters {query.length > 4000 ? "/ Long description will be prioritized" : ""}
                 </span>
               </div>
             </div>
@@ -296,7 +312,7 @@ export function SearchPage() {
       </section>
 
       {error && <div className="error-banner">{error}</div>}
-      {loading && <SearchLoadingState message={searchStep || "Searching candidates..."} elapsed={elapsedTime} />}
+      {loading && <SearchLoadingState currentStage={searchStage} elapsed={elapsedTime} />}
 
       {response && !loading && (
         <>
@@ -319,15 +335,17 @@ export function SearchPage() {
             </div>
             <div>
               <span>Candidate Pool</span>
-              <strong style={{ textTransform: "capitalize" }}>
+              <strong className="search-stat-value">
                 {classificationFilter.toLowerCase()}
               </strong>
             </div>
             <div>
               <span>Search Model</span>
-              <strong>{response.model_used || "qwen2.5-coder:7b"}</strong>
+              <strong>{response.model_used || "deterministic-sql-builder"}</strong>
             </div>
           </div>
+
+          <RequirementAnalysis response={response} />
 
           <section className="panel">
             <div className="section-title">
@@ -350,10 +368,30 @@ export function SearchPage() {
                 </div>
               </>
             ) : (
-              <EmptyState
-                title="No matching candidates were found."
-                description="Try simplifying the requirements or reducing mandatory skills."
-              />
+              <div className="empty-state-container" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <EmptyState
+                  title="No candidates satisfy all requested criteria."
+                />
+                {(() => {
+                  const mandatorySkills = response?.requirement_analysis?.mandatory_skills;
+                  const skillsList = Array.isArray(mandatorySkills)
+                    ? mandatorySkills.map((item) => String(item).trim()).filter(Boolean)
+                    : [];
+                  if (skillsList.length === 0) return null;
+                  return (
+                    <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.88rem', color: '#647184', fontWeight: 500 }}>Mandatory skills searched:</span>
+                      <div className="skill-chip-list" style={{ justifyContent: 'center' }}>
+                        {skillsList.map((skill) => (
+                          <span className="skill-chip skill-chip-missing" key={skill}>
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             )}
           </section>
         </>
@@ -435,13 +473,47 @@ function DecisionBadge({ decision }: { decision?: string | null }) {
   return <Badge tone="warning">Pending</Badge>;
 }
 
-function SearchLoadingState({ message, elapsed }: { message: string; elapsed: number }) {
+function SearchLoadingState({ currentStage, elapsed }: { currentStage: number; elapsed: number }) {
+  const stages = [
+    { id: 1, label: "Cleaning requirements..." },
+    { id: 2, label: "Extracting hiring criteria..." },
+    { id: 3, label: "Generating SQL..." },
+    { id: 4, label: "Searching database..." },
+    { id: 5, label: "Preparing results..." },
+  ];
+
   return (
     <section className="panel search-loading-panel fade-in" aria-busy="true">
-      <div className="loader-stage-container">
-        <div className="loader-stage-spinner" />
-        <div className="loader-stage-text">{message}</div>
-        <div className="loader-stage-elapsed">{elapsed} seconds elapsed</div>
+      <div className="loader-stage-container" style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center" }}>
+          <strong style={{ fontSize: "1rem", color: "#1e293b" }}>Searching candidates...</strong>
+          <span className="loader-stage-elapsed" style={{ fontSize: "0.85rem", color: "#647184" }}>{elapsed}s elapsed</span>
+        </div>
+        <div className="search-stages-list" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {stages.map((stage) => {
+            const isCompleted = currentStage > stage.id;
+            const isCurrent = currentStage === stage.id;
+            
+            let statusIcon = "○";
+            let statusColor = "#94a3b8";
+            let fontWeight = "normal";
+            if (isCompleted) {
+              statusIcon = "✓";
+              statusColor = "#10b981";
+            } else if (isCurrent) {
+              statusIcon = "●";
+              statusColor = "#3b82f6";
+              fontWeight = "bold";
+            }
+            
+            return (
+              <div key={stage.id} style={{ display: "flex", alignItems: "center", gap: "10px", color: isCurrent ? "#1e293b" : "#647184", fontWeight }}>
+                <span style={{ color: statusColor, fontSize: "1.1rem", width: "20px" }}>{statusIcon}</span>
+                <span>{stage.label}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div className="search-skeleton-table" aria-hidden="true">
         <div className="search-skeleton-head">
@@ -467,14 +539,71 @@ function SearchLoadingState({ message, elapsed }: { message: string; elapsed: nu
   );
 }
 
-function SkillChips({ value }: { value: unknown }) {
+function RequirementAnalysis({ response }: { response: SearchResponse }) {
+  const analysis = response.requirement_analysis || {};
+  const rows = [
+    ["Mandatory Skills", listValue(analysis.mandatory_skills)],
+    ["Preferred Skills", listValue(analysis.preferred_skills)],
+    ["GIS Skills", listValue(analysis.gis_skills)],
+    ["Experience", experienceValue(analysis.experience)],
+    ["Cities", listValue(analysis.cities || analysis.locations)],
+    ["Candidate Type", textValue(analysis.candidate_type)],
+    ["Education", listValue(analysis.education)],
+  ].filter(([, value]) => value !== "-");
+
+  return (
+    <section className="panel requirement-analysis-panel">
+      <div className="section-title">
+        <h3>Requirement Analysis</h3>
+        <span>{rows.length ? "Extracted from recruiter input" : "No specific filters extracted"}</span>
+      </div>
+      {rows.length > 0 && (
+        <div className="requirement-grid">
+          {rows.map(([label, value]) => (
+            <div className="requirement-item" key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+    </section>
+  );
+}
+
+function listValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    const items = value.map((item) => String(item).trim()).filter(Boolean);
+    return items.length ? items.join(", ") : "-";
+  }
+  return textValue(value);
+}
+
+function textValue(value: unknown): string {
+  const text = String(value ?? "").trim();
+  return text || "-";
+}
+
+function experienceValue(value: unknown): string {
+  if (!value || typeof value !== "object") return "-";
+  const experience = value as Record<string, unknown>;
+  const minimum = experience.minimum_years || experience.minimum;
+  const maximum = experience.maximum_years || experience.maximum;
+  if (minimum && maximum) return `${minimum}-${maximum} years`;
+  if (minimum) return `${minimum}+ years`;
+  if (maximum) return `Up to ${maximum} years`;
+  return "-";
+}
+
+function SkillChips({ value, customClass }: { value: unknown; customClass?: string }) {
   const skills = normalizeSkills(value);
   if (!skills.length) return "-";
 
   return (
     <div className="skill-chip-list">
       {skills.map((skill, index) => (
-        <span className="skill-chip" key={`${skill}-${index}`}>
+        <span className={`skill-chip ${customClass || ""}`} key={`${skill}-${index}`}>
           {skill}
         </span>
       ))}
@@ -483,13 +612,35 @@ function SkillChips({ value }: { value: unknown }) {
 }
 
 function normalizeSkills(value: unknown): string[] {
+  let list: string[] = [];
   if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
+    list = value.map((item) => String(item).trim()).filter(Boolean);
+  } else if (typeof value === "string") {
+    list = value.split(",").map((item) => item.trim()).filter(Boolean);
+  } else {
+    return [];
   }
 
-  if (typeof value === "string") {
-    return value.split(",").map((item) => item.trim()).filter(Boolean);
-  }
+  const splitList: string[] = [];
+  list.forEach((item) => {
+    const cleaned = item
+      .replace(/\s*&\s*/g, ",")
+      .replace(/\s+\band\b\s+/gi, ",")
+      .replace(/\s*\/\s*/g, ",")
+      .replace(/\s*\\\s*/g, ",")
+      .replace(/\s*\+\s*/g, ",");
+    
+    cleaned.split(",").forEach((part) => {
+      const trimmed = part.trim();
+      if (trimmed) {
+        if (trimmed.toUpperCase() === "JS") {
+          splitList.push("JavaScript");
+        } else {
+          splitList.push(trimmed);
+        }
+      }
+    });
+  });
 
-  return [];
+  return Array.from(new Set(splitList));
 }

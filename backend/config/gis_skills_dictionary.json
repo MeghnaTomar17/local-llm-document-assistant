@@ -11,8 +11,15 @@
           "ArcCatalog",
           "ArcSDE",
           "ArcOnline",
-          "ArcGIS Online",
-          "ArcGIS Enterprise"
+          "ArcGIS Online"
+        ]
+      },
+      {
+        "name": "ArcGIS Enterprise",
+        "aliases": [
+          "ArcGIS Enterprise",
+          "Portal for ArcGIS",
+          "ArcGIS Server"
         ]
       },
       {

@@ -32,6 +32,14 @@ class RecruiterResumeResult(BaseModel):
     decision_at: datetime | str | None = None
     interview_marked: bool | None = None
     candidate_type: str | None = "EXTERNAL"
+    search_score: float | None = None
+    match_explanation: list[str] = Field(default_factory=list)
+    match_details: dict[str, Any] = Field(default_factory=dict)
+    normalized_candidate_skills: list[str] = Field(default_factory=list)
+    matched_skills: list[str] = Field(default_factory=list)
+    missing_skills: list[str] = Field(default_factory=list)
+    phone: str | None = None
+    experience: str | None = None
 
 
 class RecruiterSearchResponse(BaseModel):
@@ -41,6 +49,9 @@ class RecruiterSearchResponse(BaseModel):
     execution_time_ms: float
     results: list[RecruiterResumeResult | dict[str, Any]]
     model_used: str | None = None
+    requirement_analysis: dict[str, Any] = Field(default_factory=dict)
+    debug_report_path: str | None = None
+    relaxation_attempts: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RecruiterSearchHistoryItem(BaseModel):

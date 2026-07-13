@@ -86,6 +86,7 @@ def preprocess_requirement(text: str, max_chars: int | None = None) -> str:
     # 2. Normalize smart punctuation to straight quotes
     text = re.sub(r"[\u201c\u201d\u201e\u201f\u2033\u2036]", '"', text)
     text = re.sub(r"[\u2018\u2019\u201a\u201b\u2032\u2035]", "'", text)
+    text = re.sub(r"[\u2013\u2014\u2212]", "-", text)
 
     # 3. Clean line by line (remove list bullets, numberings, markdown bold/italic)
     lines = text.split("\n")
@@ -100,11 +101,21 @@ def preprocess_requirement(text: str, max_chars: int | None = None) -> str:
         if re.match(r"^[-=_\s]+$", line):
             continue
 
-        # Remove markdown bold/italic/strikethrough
-        line = re.sub(r"(\*\*|__|\*|_|~~)", "", line)
+        # Remove common markdown markers without stripping technical punctuation in tokens.
+        line_lower = line.lower()
+        if any(kw in line_lower for kw in [
+            "equal opportunity employer", "affirmative action", "without regard to race",
+            "medical, dental, vision", "401(k)", "paid time off", "unlimited pto",
+            "competitive salary", "benefits include", "join our team", "who we are", "about us",
+            "competitive compensation", "health insurance", "health, dental"
+        ]):
+            continue
+
+        line = re.sub(r"^\s{0,3}#{1,6}\s+", "", line)
+        line = line.replace("**", "").replace("__", "").replace("~~", "")
 
         # Remove list bullet and numbering prefixes (e.g. "- ", "* ", "1. ", "a) ")
-        line = re.sub(r"^(\s*[-*+•]\s+)|(\s*\d+[\.)-]\s+)|(\s*[a-zA-Z][\.)]\s+)", "", line)
+        line = re.sub(r"^(\s*[-*+\u2022]\s+)|(\s*\d+[\.)-]\s+)|(\s*[a-zA-Z][\.)]\s+)", "", line)
         cleaned_lines.append(line.strip())
 
     # Reassemble line-cleaned text
@@ -198,6 +209,7 @@ def preprocess_requirement(text: str, max_chars: int | None = None) -> str:
 
     # Join with logical paragraph boundaries (double newlines)
     result = "\n\n".join(assembled_paragraphs)
+    result = re.sub(r"\n{3,}", "\n\n", result)
 
     # Fallback if empty
     if not result.strip() and text.strip():

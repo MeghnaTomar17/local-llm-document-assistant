@@ -7,10 +7,11 @@ export async function recruiterSearch(
   candidateType?: string | null,
   signal?: AbortSignal
 ): Promise<SearchResponse> {
+  const normalizedCandidateType = candidateType && candidateType !== "ALL" ? candidateType : undefined;
   const response = await api.post<SearchResponse>("/search", {
     query,
     session_id: sessionId || undefined,
-    candidate_type: candidateType || undefined,
+    candidate_type: normalizedCandidateType,
   }, { signal });
   return response.data;
 }

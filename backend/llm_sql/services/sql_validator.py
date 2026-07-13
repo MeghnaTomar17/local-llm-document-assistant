@@ -68,6 +68,8 @@ ALLOWED_SELECT_COLUMNS = {
     "final_notes",
     "hr_decision",
     "decision_at",
+    "interview_marked",
+    "candidate_type",
 }
 
 INTERNAL_COLUMNS = {
@@ -159,8 +161,12 @@ class SQLValidator:
                 + ", ".join(sorted(internal_columns))
             )
 
-        if not self._is_aggregate_query(normalized_sql) and not self._has_limit(normalized_sql):
-            errors.append("Non-aggregate recruiter search queries must include LIMIT 100.")
+        if not self._is_aggregate_query(normalized_sql):
+            limit_value = self._limit_value(normalized_sql)
+            if limit_value is None:
+                errors.append("Non-aggregate recruiter search queries must include LIMIT.")
+            elif limit_value > 200:
+                errors.append("Non-aggregate recruiter search queries must not fetch more than 200 rows.")
 
         result = SQLValidationResult(
             is_valid=not errors,
@@ -228,6 +234,16 @@ class SQLValidator:
     @staticmethod
     def _has_limit(sql: str) -> bool:
         return bool(re.search(r"\bLIMIT\s+\d+\b", sql, flags=re.IGNORECASE))
+
+    @staticmethod
+    def _limit_value(sql: str) -> int | None:
+        match = re.search(r"\bLIMIT\s+(\d+)\b", sql, flags=re.IGNORECASE)
+        if not match:
+            return None
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
 
     @staticmethod
     def _is_aggregate_query(sql: str) -> bool:

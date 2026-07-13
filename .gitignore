@@ -115,3 +115,8 @@ roadmap.md
 processing_report.csv
 
 backend/preview_cache/
+backend/runtime/search_debug/
+backend/runtime/search_benchmark/
+
+.codex/
+tests/

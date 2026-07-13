@@ -1,0 +1,240 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from functools import lru_cache
+import logging
+import re
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+from backend.services.skills_service import (
+    SkillEntry,
+    canonical_for_skill,
+    load_gis_dictionary,
+    load_skill_dictionary,
+    normalize_skill_key,
+)
+
+
+SKILL_FIELDS = (
+    "mandatory_skills",
+    "preferred_skills",
+    "gis_skills",
+    "programming_languages",
+    "frameworks",
+    "databases",
+    "cloud",
+    "tools",
+)
+
+GENERIC_SKILL_TERMS = {
+    "programming",
+    "development",
+    "software",
+    "technology",
+    "technologies",
+    "project",
+    "projects",
+    "research",
+    "teamwork",
+    "communication",
+    "leadership",
+    "ms office",
+    "microsoft office",
+    "microsoft word",
+    "word",
+    "powerpoint",
+    "microsoft powerpoint",
+}
+
+
+@dataclass(frozen=True)
+class ExpandedSkill:
+    canonical: str
+    aliases: tuple[str, ...]
+    is_gis: bool = False
+
+
+@lru_cache(maxsize=1)
+def dictionary_entries() -> tuple[tuple[SkillEntry, ...], tuple[SkillEntry, ...]]:
+    return load_gis_dictionary(), load_skill_dictionary()
+
+
+class SkillExpander:
+    """Normalize and expand search skills using configured dictionaries."""
+
+    def normalize_skill(self, skill: str) -> str:
+        value = str(skill or "").strip()
+        if not value:
+            return ""
+
+        val_lower = value.lower()
+        if val_lower in ("gp service", "gp services"):
+            return "Geoprocessing"
+        if val_lower in ("server manager", "server managers"):
+            return "ArcGIS Server"
+
+        gis_entries, general_entries = dictionary_entries()
+        all_entries = list(gis_entries) + list(general_entries)
+
+        canonical = self.find_canonical_skill(value, all_entries)
+        return canonical or ""
+
+    def split_combined_skills(self, phrase: str) -> list[str]:
+        p = phrase
+        p = re.sub(r"\s*&\s*", ",", p)
+        p = re.sub(r"\s*\band\b\s*", ",", p, flags=re.IGNORECASE)
+        p = re.sub(r"\s*\bor\b\s*", ",", p, flags=re.IGNORECASE)
+        p = p.replace("/", ",").replace("\\", ",")
+        p = re.sub(r"\s*\+\s*", ",", p)
+
+        parts = [part.strip() for part in p.split(",") if part.strip()]
+        return parts
+
+    def find_canonical_skill(self, sub_phrase: str, all_entries: list[SkillEntry]) -> str | None:
+        sub_clean = " " + re.sub(r"[^a-z0-9+#]+", " ", sub_phrase.lower()).strip() + " "
+
+        match_candidates = []
+        for entry in all_entries:
+            canonical_clean = re.sub(r"[^a-z0-9+#]+", " ", entry.canonical.lower()).strip()
+            if canonical_clean:
+                match_candidates.append((canonical_clean, entry.canonical))
+            for alias in entry.aliases:
+                alias_clean = re.sub(r"[^a-z0-9+#]+", " ", alias.lower()).strip()
+                if alias_clean:
+                    match_candidates.append((alias_clean, entry.canonical))
+
+        seen_candidates = set()
+        deduped_candidates = []
+        for term, canonical in match_candidates:
+            key = (term, canonical)
+            if key not in seen_candidates:
+                seen_candidates.add(key)
+                deduped_candidates.append(key)
+
+        deduped_candidates.sort(key=lambda x: len(x[0]), reverse=True)
+
+        for term_clean, canonical in deduped_candidates:
+            if f" {term_clean} " in sub_clean:
+                return canonical
+
+        return None
+
+    def normalize_and_split_skill(self, skill: str) -> list[str]:
+        value = str(skill or "").strip()
+        if not value:
+            return []
+
+        val_lower = value.lower()
+        if val_lower == "arcgis enterprise framework":
+            return ["ArcGIS Enterprise", "ArcGIS"]
+
+        parts = self.split_combined_skills(value)
+        gis_entries, general_entries = dictionary_entries()
+        all_entries = list(gis_entries) + list(general_entries)
+
+        canonical_skills = []
+        for part in parts:
+            canonical = self.normalize_skill(part)
+            if canonical:
+                canonical_skills.append(canonical)
+            else:
+                logger.info("Discarding non-canonical skill or workflow phrase: '%s'", part)
+
+        return sorted(list(set(canonical_skills)))
+
+    def expand_skill(self, skill: str) -> ExpandedSkill | None:
+        canonical = self.normalize_skill(skill)
+        if not canonical:
+            return None
+
+        gis_entries, general_entries = dictionary_entries()
+        gis_entry = self._entry_for(canonical, gis_entries)
+        if gis_entry:
+            return ExpandedSkill(canonical=gis_entry.canonical, aliases=gis_entry.aliases, is_gis=True)
+
+        general_entry = self._entry_for(canonical, general_entries)
+        if general_entry:
+            return ExpandedSkill(canonical=general_entry.canonical, aliases=general_entry.aliases, is_gis=False)
+
+        return ExpandedSkill(canonical=canonical, aliases=(canonical,), is_gis=False)
+
+    def expand_requirement(self, requirement: dict[str, Any]) -> dict[str, Any]:
+        expanded = dict(requirement or {})
+        expanded_map: dict[str, list[str]] = {}
+        canonical_gis: list[str] = []
+
+        for field in SKILL_FIELDS:
+            normalized_values: list[str] = []
+            for skill in self._list(expanded.get(field)):
+                expanded_skill = self.expand_skill(skill)
+                if not expanded_skill:
+                    continue
+                normalized_values.append(expanded_skill.canonical)
+                expanded_map[expanded_skill.canonical] = self._unique(expanded_skill.aliases)
+                if expanded_skill.is_gis and field != "preferred_skills":
+                    canonical_gis.append(expanded_skill.canonical)
+            expanded[field] = self._unique(normalized_values)
+
+        if canonical_gis:
+            expanded["gis_skills"] = self._unique([*self._list(expanded.get("gis_skills")), *canonical_gis])
+
+        expanded["expanded_skills"] = expanded_map
+        return expanded
+
+    def is_gis_skill(self, skill: str) -> bool:
+        expanded = self.expand_skill(skill)
+        return bool(expanded and expanded.is_gis)
+
+    @staticmethod
+    def _entry_for(skill: str, entries: tuple[SkillEntry, ...]) -> SkillEntry | None:
+        key = normalize_skill_key(skill)
+        for entry in entries:
+            if key == normalize_skill_key(entry.canonical):
+                return entry
+            if any(key == normalize_skill_key(alias) for alias in entry.aliases):
+                return entry
+        return None
+
+    @staticmethod
+    def _list(value: Any) -> list[str]:
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        if isinstance(value, str) and value.strip():
+            return [value.strip()]
+        return []
+
+    @staticmethod
+    def _unique(values: tuple[str, ...] | list[str]) -> list[str]:
+        result: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            clean = " ".join(str(value or "").split())
+            key = clean.lower()
+            if not clean or key in seen:
+                continue
+            seen.add(key)
+            result.append(clean)
+        return result
+
+    @staticmethod
+    def _candidate_normalization_forms(value: str) -> list[str]:
+        clean = " ".join(str(value or "").split())
+        forms = [clean]
+        lower = clean.lower()
+
+        for suffix in (" programming", " development", " basics", " basic"):
+            if lower.endswith(suffix):
+                forms.append(clean[: -len(suffix)].strip())
+
+        for prefix in ("basics of ", "basic of ", "knowledge of ", "experience in ", "hands on "):
+            if lower.startswith(prefix):
+                forms.append(clean[len(prefix):].strip())
+
+        return [form for form in forms if form]
+
+    @staticmethod
+    def _is_generic(value: str) -> bool:
+        key = " ".join(str(value or "").strip().lower().split())
+        return key in GENERIC_SKILL_TERMS
