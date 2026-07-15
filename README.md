@@ -300,5 +300,3 @@ cd ..
 ## Author & License
 
 * **Developer**: Meghna Tomar
-* **Role**: Software Engineering Intern (AI, RAG, and NLP development)
-* **License**: Open-source workspace developed for internal research and ATS platform demonstration.
