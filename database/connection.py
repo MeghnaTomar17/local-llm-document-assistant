@@ -18,7 +18,9 @@ if not DATABASE_URL:
 engine = create_engine(
     DATABASE_URL,
     echo=SQLALCHEMY_ECHO,
-    future=True
+    future=True,
+    pool_pre_ping=True,
+    pool_recycle=1800,
 )
 
 # Session Factory

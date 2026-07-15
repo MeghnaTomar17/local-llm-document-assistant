@@ -25,6 +25,9 @@ def default_bulk_status() -> dict[str, Any]:
         "total": 0,
         "failed": 0,
         "duplicates": 0,
+        "infrastructure_failed": 0,
+        "pending_retry": 0,
+        "unprocessed": 0,
         "duplicate_warnings": [],
         "current_file": "",
         "last_completed_file": "",
@@ -53,7 +56,7 @@ def read_bulk_status() -> dict[str, Any]:
                 }
             )
 
-        return _normalized_status(
+        interrupted_status = _normalized_status(
             {
                 **status,
                 "state": STATE_INTERRUPTED,
@@ -61,8 +64,11 @@ def read_bulk_status() -> dict[str, Any]:
                 "interrupted": True,
                 "interrupted_at": status.get("interrupted_at") or utc_now(),
                 "message": "Bulk import was interrupted before completion.",
+                "updated_at": utc_now(),
             }
         )
+        _write_status_file(interrupted_status)
+        return interrupted_status
 
     return _normalized_status(status)
 
@@ -76,6 +82,9 @@ def start_bulk_import(total: int, pid: int | None = None) -> dict[str, Any]:
         total=total,
         failed=0,
         duplicates=0,
+        infrastructure_failed=0,
+        pending_retry=0,
+        unprocessed=0,
         duplicate_warnings=[],
         current_file="",
         last_completed_file="",
@@ -95,6 +104,9 @@ def update_bulk_progress(
     current_file: str = "",
     failed: int = 0,
     duplicates: int = 0,
+    infrastructure_failed: int = 0,
+    pending_retry: int = 0,
+    unprocessed: int = 0,
     duplicate_warnings: list[dict[str, Any]] | None = None,
     last_completed_file: str = "",
     message: str = "Bulk import is running.",
@@ -106,6 +118,9 @@ def update_bulk_progress(
         "total": total,
         "failed": failed,
         "duplicates": duplicates,
+        "infrastructure_failed": infrastructure_failed,
+        "pending_retry": pending_retry,
+        "unprocessed": unprocessed,
         "current_file": current_file,
         "last_completed_file": last_completed_file,
         "message": message,
@@ -117,7 +132,16 @@ def update_bulk_progress(
     return write_bulk_status(**updates)
 
 
-def finish_bulk_import(*, processed: int, total: int, failed: int, duplicates: int = 0) -> dict[str, Any]:
+def finish_bulk_import(
+    *,
+    processed: int,
+    total: int,
+    failed: int,
+    duplicates: int = 0,
+    infrastructure_failed: int = 0,
+    pending_retry: int = 0,
+    unprocessed: int = 0,
+) -> dict[str, Any]:
     return write_bulk_status(
         state=STATE_COMPLETED,
         running=False,
@@ -125,6 +149,9 @@ def finish_bulk_import(*, processed: int, total: int, failed: int, duplicates: i
         total=total,
         failed=failed,
         duplicates=duplicates,
+        infrastructure_failed=infrastructure_failed,
+        pending_retry=pending_retry,
+        unprocessed=unprocessed,
         current_file="",
         message=f"Bulk import finished. {processed} of {total} resumes processed.",
         finished_at=utc_now(),

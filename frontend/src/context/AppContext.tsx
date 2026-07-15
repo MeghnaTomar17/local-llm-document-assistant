@@ -42,6 +42,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     processed: 0,
     total: 0,
     failed: 0,
+    infrastructure_failed: 0,
+    pending_retry: 0,
+    unprocessed: 0,
     message: "No bulk import is running.",
   });
   const lastImportSignature = useRef("");
@@ -124,7 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const status = await getBulkImportStatus();
       setBulkImportStatus(status);
 
-      const signature = `${status.state || ""}:${status.running}:${status.processed}:${status.total}:${status.failed}:${status.duplicates || 0}:${status.updated_at || ""}`;
+      const signature = `${status.state || ""}:${status.running}:${status.processed}:${status.total}:${status.failed}:${status.duplicates || 0}:${status.infrastructure_failed || 0}:${status.pending_retry || 0}:${status.updated_at || ""}`;
       const hasProgress = status.total > 0 && signature !== lastImportSignature.current;
 
       if (hasProgress) {

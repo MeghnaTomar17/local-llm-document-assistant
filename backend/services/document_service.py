@@ -16,6 +16,7 @@ from pdf_processor import (
 )
 from backend.services.metadata_service import ResumeMetadataService
 from backend.services.resume_service import DuplicateCandidateError, persist_resume_metadata
+from backend.services.infrastructure import InfrastructureError, retry_database_operation
 from backend.services.session_service import (
     activate_persistent_session,
     create_persistent_session,
@@ -100,9 +101,13 @@ class DocumentService:
             self.active_session_id = session_id
             return session
 
-    def add_document(self, file_path, display_name=None, session_id=None):
+    def add_document(self, file_path, display_name=None, session_id=None, bulk_mode=False):
         with self._lock:
-            result = self.add_documents([(file_path, display_name)], session_id=session_id)
+            result = self.add_documents(
+                [(file_path, display_name)],
+                session_id=session_id,
+                bulk_mode=bulk_mode,
+            )
             if not result["documents"]:
                 if result["errors"] and result["errors"][0].get("duplicate"):
                     duplicate_error = DuplicateCandidateError.__new__(DuplicateCandidateError)
@@ -113,7 +118,7 @@ class DocumentService:
                 raise RuntimeError(detail)
             return result["session"]
 
-    def add_documents(self, file_items, session_id=None):
+    def add_documents(self, file_items, session_id=None, bulk_mode=False):
         with self._lock:
             added_documents = []
             errors = []
@@ -125,12 +130,15 @@ class DocumentService:
                         session, document = self.process_resume_workspace(
                             file_path,
                             display_name,
+                            bulk_mode=bulk_mode,
                         )
                         sessions.append(session)
                         if document:
                             added_documents.append(document)
                     except DuplicateCandidateError as exc:
                         errors.append(exc.payload)
+                    except InfrastructureError:
+                        raise
                     except Exception as exc:
                         logger.exception("Failed to process resume %s: %s", display_name or file_path, exc)
                         errors.append(
@@ -167,7 +175,15 @@ class DocumentService:
 
             for index, (file_path, display_name) in enumerate(file_items):
                 try:
-                    existing = get_resume_by_hash(self.resume_hash(file_path))
+                    resume_hash = self.resume_hash(file_path)
+                    if bulk_mode:
+                        existing = retry_database_operation(
+                            lambda: get_resume_by_hash(resume_hash),
+                            filename=display_name or Path(file_path).name,
+                            operation_name="duplicate pre-check",
+                        )
+                    else:
+                        existing = get_resume_by_hash(resume_hash)
                     if existing:
                         raise DuplicateCandidateError(existing, reason="File Hash")
 
@@ -176,10 +192,13 @@ class DocumentService:
                         file_path,
                         display_name,
                         reset_store=(index == 0 and not session.documents),
+                        bulk_mode=bulk_mode,
                     )
                     added_documents.append(document)
                 except DuplicateCandidateError as exc:
                     errors.append(exc.payload)
+                except InfrastructureError:
+                    raise
                 except Exception as exc:
                     logger.exception("Failed to process resume %s: %s", display_name or file_path, exc)
                     errors.append(
@@ -196,8 +215,16 @@ class DocumentService:
                 "errors": errors,
             }
 
-    def process_resume_workspace(self, file_path, display_name=None):
-        existing = get_resume_by_hash(self.resume_hash(file_path))
+    def process_resume_workspace(self, file_path, display_name=None, bulk_mode=False):
+        resume_hash = self.resume_hash(file_path)
+        if bulk_mode:
+            existing = retry_database_operation(
+                lambda: get_resume_by_hash(resume_hash),
+                filename=display_name or Path(file_path).name,
+                operation_name="duplicate pre-check",
+            )
+        else:
+            existing = get_resume_by_hash(resume_hash)
 
         if existing:
             raise DuplicateCandidateError(existing, reason="File Hash")
@@ -215,18 +242,28 @@ class DocumentService:
             document.get("text", ""),
         )
         
-        resume = persist_resume_metadata(
-            Path(file_path),
-            document["name"],
-            metadata,
-            session_id=None,
-        )
+        def persist_document():
+            resume_record = persist_resume_metadata(
+                Path(file_path),
+                document["name"],
+                metadata,
+                session_id=None,
+            )
+            save_resume_chunks(resume_record.id, document.get("chunks", []))
+            return resume_record
+
+        if bulk_mode:
+            resume = retry_database_operation(
+                persist_document,
+                filename=display_name or Path(file_path).name,
+                operation_name="resume persistence",
+            )
+        else:
+            resume = persist_document()
 
         session.session_id = str(resume.session_id)
         document["metadata"] = metadata
         document["resume_id"] = str(resume.id)
-        
-        save_resume_chunks(resume.id, document.get("chunks", []))
         session.add_document(document)
 
         self.sessions[session.session_id] = session
@@ -238,7 +275,7 @@ class DocumentService:
     def resume_hash(file_path):
         return hashlib.sha256(Path(file_path).read_bytes()).hexdigest()
 
-    def process_resume_for_session(self, session, file_path, display_name=None, reset_store=True):
+    def process_resume_for_session(self, session, file_path, display_name=None, reset_store=True, bulk_mode=False):
         document = process_document(
             file_path,
             vector_store=session.vector_store,
@@ -251,16 +288,26 @@ class DocumentService:
             document.get("text", ""),
         )
         
-        resume = persist_resume_metadata(
-            Path(file_path),
-            document["name"],
-            metadata,
-            session_id=uuid.UUID(str(session.session_id)),
-        )
+        def persist_document():
+            resume_record = persist_resume_metadata(
+                Path(file_path),
+                document["name"],
+                metadata,
+                session_id=uuid.UUID(str(session.session_id)),
+            )
+            save_resume_chunks(resume_record.id, document.get("chunks", []))
+            return resume_record
+
+        if bulk_mode:
+            resume = retry_database_operation(
+                persist_document,
+                filename=display_name or Path(file_path).name,
+                operation_name="resume persistence",
+            )
+        else:
+            resume = persist_document()
         document["metadata"] = metadata
         document["resume_id"] = str(resume.id)
-        
-        save_resume_chunks(resume.id, document.get("chunks", []))
         session.add_document(document)
         return document
 

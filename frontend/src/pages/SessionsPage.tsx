@@ -214,15 +214,33 @@ function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onN
   const total = status.total || 0;
   const processed = status.processed || 0;
   const failed = status.failed || 0;
+  const duplicates = status.duplicates || 0;
+  const infrastructureFailed = status.infrastructure_failed || 0;
+  const inferredUnprocessed = total > processed ? total - processed : 0;
+  const unprocessed = status.unprocessed ?? inferredUnprocessed;
+  const pendingRetry = status.pending_retry ?? Math.max(0, infrastructureFailed + unprocessed);
+  const successful = Math.max(0, processed - failed - duplicates - infrastructureFailed);
   const progress = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
   const currentFile = status.current_file || "";
   const lastUpdate = formatStatusTime(status.updated_at || status.finished_at || status.started_at);
   const lifecycleState = getBulkImportState(status);
   const isRunning = lifecycleState === "RUNNING";
   const isInterrupted = lifecycleState === "INTERRUPTED";
-  const interruptedTimeMs = status.interrupted_at ? new Date(status.interrupted_at).getTime() : 0;
-  const etaReferenceTime = isInterrupted && interruptedTimeMs ? interruptedTimeMs : now;
-  const eta = isRunning || isInterrupted ? estimateImportEta(status, etaReferenceTime) : "";
+  const eta = isRunning ? estimateImportEta(status, now) : "";
+
+  const getAverageProcessingTime = () => {
+    if (!status.started_at || processed <= 0) return null;
+    const start = new Date(status.started_at).getTime();
+    const end = status.finished_at 
+      ? new Date(status.finished_at).getTime() 
+      : status.updated_at 
+        ? new Date(status.updated_at).getTime() 
+        : now;
+    const diffSeconds = (end - start) / 1000;
+    if (diffSeconds <= 0) return null;
+    return diffSeconds / processed;
+  };
+  const avgTime = getAverageProcessingTime();
 
   const wasRunningRef = useRef(isRunning);
 
@@ -244,7 +262,6 @@ function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onN
   const showSummary = lifecycleState === "COMPLETED" && status.finished_at && status.total > 0;
 
   if (showSummary) {
-    const successes = Math.max(0, processed - failed - (status.duplicates || 0));
     return (
       <section className="import-status-panel import-status-summary">
         <div className="section-title">
@@ -257,17 +274,37 @@ function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onN
         
         <div className="import-summary-box">
           <div className="import-summary-grid">
+            <div className="summary-item total">
+              <span>Total Resumes</span>
+              <strong>{total}</strong>
+            </div>
             <div className="summary-item success">
               <span>Imported Successfully</span>
-              <strong>{successes}</strong>
+              <strong>{successful}</strong>
             </div>
             <div className="summary-item duplicate">
               <span>Duplicates Skipped</span>
-              <strong>{status.duplicates || 0}</strong>
+              <strong>{duplicates}</strong>
             </div>
             <div className="summary-item failed">
-              <span>Failed</span>
+              <span>Document Failed</span>
               <strong>{failed}</strong>
+            </div>
+            <div className="summary-item warning">
+              <span>Infrastructure Failed</span>
+              <strong>{infrastructureFailed}</strong>
+            </div>
+            <div className="summary-item warning">
+              <span>Pending Retry</span>
+              <strong>{pendingRetry}</strong>
+            </div>
+            <div className="summary-item total">
+              <span>Unprocessed</span>
+              <strong>{unprocessed}</strong>
+            </div>
+            <div className="summary-item info">
+              <span>Avg Time / Resume</span>
+              <strong>{avgTime !== null ? `${avgTime.toFixed(1)}s` : "-"}</strong>
             </div>
           </div>
         </div>
@@ -303,6 +340,7 @@ function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onN
 
   if (isInterrupted) {
     const interruptedTime = formatStatusTime(status.interrupted_at || status.updated_at);
+    const progressLabel = total ? `${processed} of ${total} attempted before interruption` : `${processed} attempted before interruption`;
     return (
       <section className="import-status-panel import-status-interrupted">
         <div className="section-title">
@@ -312,15 +350,37 @@ function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onN
           </div>
           <Badge tone="danger">Interrupted</Badge>
         </div>
-        <div className="import-progress-grid">
-          <div>
-            <span>Processed</span>
+        <div className="import-metric-grid">
+          <div className="import-metric">
+            <span>Attempted</span>
             <strong>{processed}</strong>
           </div>
-          <div>
-            <span>Failed</span>
+          <div className="import-metric success">
+            <span>Imported</span>
+            <strong>{successful}</strong>
+          </div>
+          <div className="import-metric">
+            <span>Duplicates</span>
+            <strong>{duplicates}</strong>
+          </div>
+          <div className="import-metric danger">
+            <span>Document failed</span>
             <strong>{failed}</strong>
           </div>
+          <div className="import-metric warning">
+            <span>Infrastructure failed</span>
+            <strong>{infrastructureFailed}</strong>
+          </div>
+          <div className="import-metric warning">
+            <span>Pending retry</span>
+            <strong>{pendingRetry}</strong>
+          </div>
+          <div className="import-metric info">
+            <span>Avg Time / Resume</span>
+            <strong>{avgTime !== null ? `${avgTime.toFixed(1)}s` : "-"}</strong>
+          </div>
+        </div>
+        <div className="import-progress-grid import-progress-grid-compact">
           <div className="import-current-file">
             <span>Last processed file</span>
             <strong title={status.last_completed_file || currentFile || "None"}>
@@ -336,8 +396,9 @@ function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onN
           <div className="progress-bar is-interrupted" style={{ width: `${progress}%` }} />
         </div>
         <div className="import-runtime-meta">
-          <small>{progress}% complete before interruption</small>
-          <small>ETA {eta || "calculating..."} (Paused)</small>
+          <small>{progress}% complete</small>
+          <small>{progressLabel}</small>
+          {unprocessed > 0 && <small>{unprocessed} unprocessed</small>}
         </div>
 
         {status.duplicate_warnings && status.duplicate_warnings.length > 0 && (
@@ -400,6 +461,16 @@ function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onN
           <span>Failed</span>
           <strong>{failed} failed</strong>
         </div>
+        <div>
+          <span>Avg Time / Resume</span>
+          <strong>{avgTime !== null ? `${avgTime.toFixed(1)}s` : "-"}</strong>
+        </div>
+        {infrastructureFailed > 0 && (
+          <div>
+            <span>Infrastructure</span>
+            <strong>{infrastructureFailed} retrying</strong>
+          </div>
+        )}
         <div className="import-current-file">
           <span>Current file</span>
           <strong title={currentFile || "Preparing next resume..."}>{currentFile || "Preparing next resume..."}</strong>

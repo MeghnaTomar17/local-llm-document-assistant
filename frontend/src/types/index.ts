@@ -151,6 +151,9 @@ export interface BulkImportStatus {
   total: number;
   failed: number;
   duplicates?: number;
+  infrastructure_failed?: number;
+  pending_retry?: number;
+  unprocessed?: number;
   duplicate_warnings?: Array<{
     file_name: string;
     candidate_name: string;
