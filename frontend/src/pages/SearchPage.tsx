@@ -339,10 +339,6 @@ export function SearchPage() {
                 {classificationFilter.toLowerCase()}
               </strong>
             </div>
-            <div>
-              <span>Search Model</span>
-              <strong>{response.model_used || "deterministic-sql-builder"}</strong>
-            </div>
           </div>
 
           <RequirementAnalysis response={response} />

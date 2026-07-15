@@ -1008,7 +1008,14 @@ button:disabled {
 }
 
 .search-form {
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-form .btn {
+  align-self: flex-end;
+  min-width: 140px;
 }
 
 .search-skeleton-table {

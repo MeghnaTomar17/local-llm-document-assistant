@@ -183,13 +183,13 @@ export function ResumeWorkspace({
             </Button>
             {savingDecision && <Loader label="Saving..." />}
           </div>
-          <div className="interview-actions" style={{ display: "inline-flex", alignItems: "center", gap: "8px", borderLeft: "1px solid #e2e8f0", paddingLeft: "12px", marginLeft: "4px" }}>
-            <span style={{ color: "#64748b", fontSize: "0.85rem", fontWeight: 600 }}>Interview Status</span>
+          <div className="interview-actions" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ color: "#647184", fontSize: "0.84rem", fontWeight: 700 }}>Interview Status</span>
             <span className="interview-status-label" style={{ fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "4px" }}>
               {resume.interview_marked ? (
-                <span style={{ color: "#10b981", fontWeight: 500 }}>✓ Marked for Interview</span>
+                <Badge tone="success">✓ Marked for Interview</Badge>
               ) : (
-                <span style={{ color: "#64748b" }}>○ Not Marked</span>
+                <Badge tone="secondary">○ Not Marked</Badge>
               )}
             </span>
             <Button
@@ -202,11 +202,11 @@ export function ResumeWorkspace({
             </Button>
             {savingInterview && <Loader label="" />}
           </div>
-          <div className="candidate-classification-actions" style={{ display: "inline-flex", alignItems: "center", gap: "8px", borderLeft: "1px solid #e2e8f0", paddingLeft: "12px", marginLeft: "4px" }}>
-            <span style={{ color: "#64748b", fontSize: "0.85rem", fontWeight: 600 }}>Candidate Classification</span>
-            <span style={{ fontSize: "0.85rem", color: resume.candidate_type === "INTERNAL" ? "#10b981" : "#0284c7", fontWeight: 500 }}>
+          <div className="candidate-classification-actions" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ color: "#647184", fontSize: "0.84rem", fontWeight: 700 }}>Candidate Classification</span>
+            <Badge tone={resume.candidate_type === "INTERNAL" ? "success" : "info"}>
               {resume.candidate_type === "INTERNAL" ? "Internal Employee" : "External Candidate"}
-            </span>
+            </Badge>
             <div className="segmented-control">
               <button
                 type="button"

@@ -1,29 +1,29 @@
 # Setup Guide
 
-This guide explains how to set up the current Resume Intelligence Assistant on a new PC or upgrade an older copy that only had the initial `resumes` table.
+This guide explains how to set up the Resume Intelligence Assistant on a new PC or upgrade an existing workspace.
 
-The app has three moving parts:
+The application architecture has three moving parts:
 
 ```text
-PostgreSQL -> stores resumes, resume blobs, chunks, sessions, chat history, recruiter notes, HR decisions, and recruiter search history
-FastAPI    -> runs extraction, upload, chat, recruiter search, preview, and resume APIs
-React      -> recruiter dashboard, sessions, resume workspace, and recruiter search
-Ollama     -> local AI models (Llama 3.2 + Qwen2.5-Coder)
+PostgreSQL  -> Persistence for resumes, file blobs, chunks, sessions, chat history, and search logs.
+FastAPI     -> Backend processing for extraction, upload, chat, and recruiter search.
+React       -> Frontend recruiter console with dashboards, workspaces, and search pages.
+Ollama      -> Local AI models running completely offline.
 ```
 
 ---
 
-## 1. Install Required Software
+## Prerequisites
 
-Install these first:
+Before starting, install the following software on your system:
 
-- Python 3.11 or newer
-- Node.js 18 or newer
-- PostgreSQL
-- Ollama
-- Git
+- **Python 3.11** or newer
+- **Node.js 18** or newer
+- **PostgreSQL** (version 15 or newer recommended)
+- **Ollama** (latest stable release)
+- **Git**
 
-Recommended checks:
+Verify your environment by running:
 
 ```powershell
 python --version
@@ -35,46 +35,40 @@ ollama --version
 
 ---
 
-## 2. Get the Latest Project
+## 1. Setup the Codebase
 
-Open PowerShell and go to the project folder.
-
-If the project is already cloned:
+Clone the repository or extract the project folder, then navigate into the project root directory in your shell:
 
 ```powershell
-cd D:\internship-hexamap\project-one\local-llm-document-assistant
-git pull
+cd path/to/local-llm-document-assistant
 ```
-
-If the project is being shared manually, copy the latest project folder to the PC and open PowerShell inside it.
 
 ---
 
-## 3. Create the Python Environment
+## 2. Configure Python Virtual Environment
 
-From the project root:
+Create and activate a virtual environment (`.venv`) to manage dependencies locally:
 
+### Windows (PowerShell)
 ```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+python -m venv .venv
+# If script execution is blocked, run: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-If PowerShell blocks activation, run:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
-Then activate again:
-
-```powershell
-.\venv\Scripts\Activate.ps1
+### macOS / Linux
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ---
 
-## 4. Install Frontend Packages
+## 3. Install Frontend Packages
+
+Navigate to the frontend folder, install npm dependencies, and return:
 
 ```powershell
 cd frontend
@@ -84,17 +78,16 @@ cd ..
 
 ---
 
-## 5. Prepare PostgreSQL
+## 4. Set Up PostgreSQL Database
 
-Start PostgreSQL and create the database if it does not already exist.
-
-Open `psql` or pgAdmin and run:
+1. Ensure PostgreSQL is running.
+2. Open your terminal database client (`psql`) or PGAdmin and run the following command to create the application database:
 
 ```sql
 CREATE DATABASE resume_platform;
 ```
 
-Create a `.env` file in the project root:
+3. Create a `.env` file in the project root folder. Copy the template below and replace `<password>` with your database credentials:
 
 ```env
 DATABASE_URL=postgresql://postgres:<password>@localhost:5432/resume_platform
@@ -105,43 +98,17 @@ OLLAMA_METADATA_MODEL=llama3.2:3b
 OLLAMA_HOST=http://localhost:11434
 ```
 
-Replace `<password>` with the local PostgreSQL password.
-
-Example:
-
-```env
-DATABASE_URL=postgresql://postgres:admin123@localhost:5432/resume_platform
-```
-
 ---
 
-## 6. Back Up Existing Data
+## 5. Initialize Schema & Apply Migrations
 
-If this PC already has resume data, take a backup before migrations:
-
-```powershell
-pg_dump -U postgres -d resume_platform -f resume_platform_backup.sql
-```
-
-Keep this file safe until setup is verified.
-
----
-
-## 7. Create Base Tables
-
-Run:
+1. Run the database initializer to build the tables:
 
 ```powershell
 python database/init_db.py
 ```
 
-This creates missing tables from the SQLAlchemy models. It does not intentionally delete existing data.
-
----
-
-## 8. Apply Database Migrations
-
-Run all migrations in order.
+2. Run the database migrations in order to add all necessary recruiter search and session tracking schemas:
 
 ```powershell
 psql -U postgres -d resume_platform -f database/migrations/001_add_resume_blob.sql
@@ -160,257 +127,75 @@ psql -U postgres -d resume_platform -f database/migrations/011_add_interview_mar
 psql -U postgres -d resume_platform -f database/migrations/012_add_candidate_type.sql
 ```
 
-These migrations add:
-
-- Resume file blob storage
-- Persistent recruiter sessions
-- Candidate-level resume workspaces
-- Chat history
-- Recruiter search history
-- Resume chunks
-- Unique chunk protection
-- HR decisions
-- On Hold decision status
-- HR Notes, Technical Notes, and Final Notes
-- Interview marked flag (marked/unmarked)
-- Candidate Classification pool (INTERNAL / EXTERNAL)
-
-If PostgreSQL says a column, index, or table already exists, continue with the next migration unless the command stops with a serious error.
-
 ---
 
-## 9. Install and Start Ollama
+## 6. Configure Ollama Models
 
-Pull the model:
+Pull the required AI models to run them locally:
 
 ```powershell
 ollama pull llama3.2:3b
 ollama pull qwen2.5-coder:7b
 ```
 
-Start Ollama:
+Make sure the Ollama application is running. You can check model availability by typing:
 
+```powershell
+ollama list
+```
+
+---
+
+## 7. Start the Application
+
+To run the application, open three separate terminal windows:
+
+### Terminal 1: Start Ollama
 ```powershell
 ollama serve
 ```
 
-Keep this window open while using the app.
-
-If Ollama says it is already running, that is fine.
-
-> **Note**
->
-> The application uses two dedicated local AI models:
->
-> - **Llama 3.2:3B** for resume metadata extraction, candidate chat, and resume summarization.
-> - **Qwen2.5-Coder:7B** for natural language recruiter search (Text-to-SQL).
->
-> Both models must be available in Ollama before starting the backend.
----
-
-## 10. Start the Backend
-
-Open a new PowerShell window:
-
+### Terminal 2: Start Backend Server
 ```powershell
-cd D:\internship-hexamap\project-one\local-llm-document-assistant
-.\venv\Scripts\Activate.ps1
+# Navigate to project root, activate virtual environment, and run:
+.\.venv\Scripts\Activate.ps1
 uvicorn backend.main:app --reload
 ```
+*API Swagger Docs will be available at: http://localhost:8000/docs*
 
-Backend URL:
-
-```text
-http://localhost:8000
-```
-
-API docs:
-
-```text
-http://localhost:8000/docs
-```
-
----
-
-## 11. Start the Frontend
-
-Open another PowerShell window:
-
+### Terminal 3: Start React Frontend
 ```powershell
-cd D:\internship-hexamap\project-one\local-llm-document-assistant\frontend
+# Navigate to the frontend folder and run:
+cd frontend
 npm run dev
 ```
-
-Frontend URL:
-
-```text
-http://localhost:5173
-```
-
-Open that URL in the browser.
+*Frontend Console will be available at: http://localhost:5173*
 
 ---
 
-## 12. Verify the App
+## 8. Verification & Diagnostics
 
-Check these after setup:
+Verify your setup by running the compiler check on Python modules and Vite:
 
-- Dashboard opens.
-- Sessions page opens.
-- Existing resumes appear.
-- Candidate search in the Sessions sidebar works.
-- Uploading one PDF or DOCX works.
-- Uploading a batch shows progress like `2 of 8`, `3 of 8`.
-- Metadata appears after upload.
-- Editing candidate details saves to PostgreSQL.
-- Page refresh keeps edited metadata.
-- HR decision buttons show only On Hold, Accept, and Reject.
-- Pending is shown as the default decision state.
-- HR Notes, Technical Notes, and Final Notes save correctly.
-- Resume preview opens for PDFs.
-- Resume download works from the PostgreSQL blob.
-- Chat answers only for the selected candidate.
-- Reopening a resume uses stored chunks instead of parsing the PDF again.
-- Recruiter Search returns candidate results.
-- Search history can be hidden or shown.
-- Resume Preview opens correctly.
-- Resume Download works.
-- Duplicate candidate detection prevents duplicate uploads.
-- Resume chunks are created only during the first upload.
-- Reopening an existing resume loads stored chunks from PostgreSQL.
-- Recruiter Search generates SQL using Qwen2.5-Coder.
-- Resume Chat uses Llama 3.2.
-
----
-
-## Useful Commands
-
-Backend syntax check:
-
+### Backend syntax compiler check
 ```powershell
 python -m py_compile backend/main.py backend/api/routes.py backend/routes/resume_routes.py
 ```
 
-Frontend production build:
-
+### Frontend build verification
 ```powershell
 cd frontend
 npm run build
-```
-
-Process resumes from a folder (with optional candidate classification: INTERNAL or EXTERNAL):
-
-```powershell
-python bulk_process.py "D:\Resume_Dataset" --candidate-type INTERNAL
+cd ..
 ```
 
 ---
 
 ## Troubleshooting
 
-### Frontend cannot connect to backend
-
-Make sure the backend is running:
-
-```text
-http://localhost:8000
-```
-
-Also check that `frontend/src/services/http.ts` points to the correct backend URL or that `VITE_API_URL` is set correctly.
-
-### Backend says a database column does not exist
-
-Run the migrations from step 8 again in order.
-
-Common missing columns usually come from skipped migrations:
-
-- `resume_blob`
-- `chat_history`
-- `resume_id`
-- `hr_decision`
-- `hr_notes`
-- `technical_notes`
-- `final_notes`
-
-### Upload works but chat has no context
-
-Check that chunks exist:
-
-```sql
-SELECT resume_id, COUNT(*)
-FROM resume_chunks
-GROUP BY resume_id;
-```
-
-New uploads should create chunks automatically. Existing older resumes can still fall back to the older path when needed.
-
-### Ollama extraction or chat fails
-
-Confirm Ollama is running:
-
-```powershell
-ollama list
-```
-
-If the model is missing:
-
-```powershell
-ollama pull llama3.2:3b
-```
-
-### Python dependencies fail
-
-Use Python 3.11+, activate the virtual environment, then reinstall:
-
-```powershell
-.\venv\Scripts\Activate.ps1
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### Node dependencies fail
-
-From the frontend folder:
-
-```powershell
-npm install
-```
-
-If needed:
-
-```powershell
-npm cache verify
-```
-
----
-
-## Expected Daily Startup
-
-After setup is complete, daily startup is simple.
-
-Terminal 1:
-
-```powershell
-ollama serve
-```
-
-Terminal 2:
-
-```powershell
-cd D:\internship-hexamap\project-one\local-llm-document-assistant
-.\venv\Scripts\Activate.ps1
-uvicorn backend.main:app --reload
-```
-
-Terminal 3:
-
-```powershell
-cd D:\internship-hexamap\project-one\local-llm-document-assistant\frontend
-npm run dev
-```
-
-Then open:
-
-```text
-http://localhost:5173
-```
+- **Database Column Errors**: If you encounter errors regarding missing database columns (`interview_marked`, `candidate_type`, `hr_decision`), confirm that you ran all migrations in Step 5 in correct alphabetical sequence.
+- **Port Conflict (8000/5173)**: If Uvicorn or Vite fail to start due to port conflicts, make sure no old processes are running in the background. On Windows, you can kill stuck tasks via:
+  ```powershell
+  Stop-Process -Name python, uvicorn -Force -ErrorAction SilentlyContinue
+  ```
+- **Llama Candidate Pool defaulting to INTERNAL**: If natural language queries default the search pool to `INTERNAL`, pull the latest extraction prompts from the repository to enable keyword-dependent classification.
