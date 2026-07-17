@@ -254,6 +254,7 @@ if uploaded_file:
             metadata = METADATA_SERVICE.add_resume(
                 st.session_state.document["name"],
                 st.session_state.document.get("text", ""),
+                file_path=saved_path,
             )
             st.session_state.document["metadata"] = metadata
             st.session_state.metadata_records = list(METADATA_SERVICE.records)

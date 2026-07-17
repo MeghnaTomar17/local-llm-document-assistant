@@ -240,6 +240,7 @@ class DocumentService:
         metadata = self.metadata_service.add_resume(
             document["name"],
             document.get("text", ""),
+            file_path=file_path,
         )
         
         def persist_document():
@@ -286,6 +287,7 @@ class DocumentService:
         metadata = self.metadata_service.add_resume(
             document["name"],
             document.get("text", ""),
+            file_path=file_path,
         )
         
         def persist_document():

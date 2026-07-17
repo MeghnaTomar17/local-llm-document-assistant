@@ -63,6 +63,7 @@ def main():
             resume_path.name,
             extraction.get("text", ""),
             llm_model=args.model,
+            file_path=resume_path,
         )
         elapsed = time.perf_counter() - start
         total_time += elapsed

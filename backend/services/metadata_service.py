@@ -9,6 +9,11 @@ from backend.services.llm_metadata_extractor import (
     extract_enrichment_with_ollama,
     is_fresher,
 )
+from backend.services.header_name_ocr import (
+    extract_header_text_for_name,
+    extract_name_from_header,
+    is_valid_candidate_name,
+)
 from backend.services.skills_service import enhance_skills
 
 logger = logging.getLogger(__name__)
@@ -37,8 +42,13 @@ class ResumeMetadataService:
         self.records = []
         self.regenerate_files()
 
-    def add_resume(self, file_name, extracted_text):
-        record = extract_resume_metadata(file_name, extracted_text, llm_model=self.llm_model)
+    def add_resume(self, file_name, extracted_text, file_path=None):
+        record = extract_resume_metadata(
+            file_name,
+            extracted_text,
+            llm_model=self.llm_model,
+            file_path=file_path,
+        )
         self.add_record(record)
         return record
 
@@ -69,7 +79,7 @@ class ResumeMetadataService:
             writer.writerows(self.records)
 
 
-def extract_resume_metadata(file_name, extracted_text, llm_model=None):
+def extract_resume_metadata(file_name, extracted_text, llm_model=None, file_path=None):
     text = extracted_text or ""
 
     llm_metadata = extract_metadata_with_ollama(
@@ -112,6 +122,19 @@ def extract_resume_metadata(file_name, extracted_text, llm_model=None):
         return fallback_metadata[field]
 
     candidate_name = llm_metadata.get("candidate_name", "")
+    if candidate_name and not is_valid_candidate_name(candidate_name):
+        logger.warning("Primary candidate name rejected as invalid: %s", candidate_name)
+        candidate_name = ""
+
+    if not candidate_name and file_path:
+        logger.info("Candidate name missing from primary extraction; attempting targeted header OCR.")
+        header_text = extract_header_text_for_name(file_path)
+        ocr_candidate = extract_name_from_header(header_text)
+        if is_valid_candidate_name(ocr_candidate):
+            candidate_name = ocr_candidate
+            logger.info("Header OCR recovered candidate name: %s", candidate_name)
+        else:
+            logger.info("Header OCR completed but no valid candidate name was found.")
     email = llm_metadata.get("email", "")
 
     if candidate_name and email:
@@ -159,8 +182,16 @@ def deterministic_metadata_fallback(file_name, text):
 
     candidate_name = extract_candidate_name(text)
 
-    if not looks_like_person_name(candidate_name):
+    if candidate_name and not is_valid_candidate_name(candidate_name):
+        logger.warning("Regex candidate name rejected as invalid: %s", candidate_name)
+        candidate_name = ""
+
+    if not is_valid_candidate_name(candidate_name):
         candidate_name = extract_candidate_name_from_file_name(file_name)
+
+    if candidate_name and not is_valid_candidate_name(candidate_name):
+        logger.warning("Filename candidate name rejected as invalid: %s", candidate_name)
+        candidate_name = ""
 
     return {
         "Candidate Name": candidate_name,

@@ -483,13 +483,13 @@ def _extract_pdf_text_pypdf(file_path):
 
 def _extract_pdf_text_easyocr(file_path):
     try:
-        import easyocr
         import fitz
         from PIL import Image
+        from backend.services.header_name_ocr import get_easyocr_reader
     except ImportError as exc:
         raise RuntimeError("EasyOCR fallback requires easyocr, PyMuPDF, and Pillow.") from exc
 
-    reader = easyocr.Reader(["en"], gpu=False)
+    reader = get_easyocr_reader()
     pages = []
 
     with fitz.open(file_path) as document:
