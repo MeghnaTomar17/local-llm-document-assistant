@@ -149,11 +149,31 @@ Done!
 *(No further migrations are needed, as this builds the latest tables including interview flags and pool fields).*
 
 #### Option B: Upgrading an Existing Database Workspace
-If you have a database containing records from a previous version of the app and want to upgrade the schemas without losing your uploaded resumes, run the programmatic migrations:
+If you have a database containing records from a previous version of the app and want to upgrade the schemas without losing your uploaded resumes, you can either:
+
+**1. Run migrations automatically using the Python runner (Recommended):**
 ```powershell
 python database/run_migrations.py
 ```
-This script runs each migration query file sequentially.
+
+**2. Alternatively, apply individual migrations manually via the psql CLI:**
+```powershell
+psql -U postgres -d resume_platform -f database/migrations/001_add_resume_blob.sql
+psql -U postgres -d resume_platform -f database/migrations/002_add_persistent_sessions.sql
+psql -U postgres -d resume_platform -f database/migrations/003_one_session_per_unique_resume.sql
+psql -U postgres -d resume_platform -f database/migrations/004_sync_session_schema.sql
+psql -U postgres -d resume_platform -f database/migrations/004_workspace_chat_and_search_history.sql
+psql -U postgres -d resume_platform -f database/migrations/005_create_recruiter_search_history.sql
+psql -U postgres -d resume_platform -f database/migrations/005_isolate_resume_sessions.sql
+psql -U postgres -d resume_platform -f database/migrations/006_decouple_recruiter_search_history.sql
+psql -U postgres -d resume_platform -f database/migrations/007_create_resume_chunks.sql
+psql -U postgres -d resume_platform -f database/migrations/008_add_resume_chunks_unique_constraint.sql
+psql -U postgres -d resume_platform -f database/migrations/009_add_hr_decision.sql
+psql -U postgres -d resume_platform -f database/migrations/010_extend_reviewer_workflow.sql
+psql -U postgres -d resume_platform -f database/migrations/011_add_interview_marked.sql
+psql -U postgres -d resume_platform -f database/migrations/012_add_candidate_type.sql
+```
+*(Replace `postgres` with your local PostgreSQL role username if it is configured differently).*
 
 ---
 
