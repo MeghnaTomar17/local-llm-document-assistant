@@ -161,13 +161,6 @@ class SQLValidator:
                 + ", ".join(sorted(internal_columns))
             )
 
-        if not self._is_aggregate_query(normalized_sql):
-            limit_value = self._limit_value(normalized_sql)
-            if limit_value is None:
-                errors.append("Non-aggregate recruiter search queries must include LIMIT.")
-            elif limit_value > 200:
-                errors.append("Non-aggregate recruiter search queries must not fetch more than 200 rows.")
-
         result = SQLValidationResult(
             is_valid=not errors,
             sql=normalized_sql,

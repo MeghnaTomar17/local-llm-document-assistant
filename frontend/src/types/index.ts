@@ -116,6 +116,7 @@ export interface SearchResponse {
   requirement_analysis?: Record<string, unknown>;
   debug_report_path?: string | null;
   relaxation_attempts?: Array<Record<string, unknown>>;
+  no_searchable_criteria?: boolean;
 }
 
 export interface SearchHistoryItem {
@@ -127,6 +128,7 @@ export interface SearchHistoryItem {
   results_snapshot: SearchResult[];
   execution_time_ms?: number | null;
   model_used: string;
+  no_searchable_criteria?: boolean;
   created_at: string;
 }
 

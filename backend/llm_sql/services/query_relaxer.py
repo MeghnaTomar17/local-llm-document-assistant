@@ -166,7 +166,7 @@ class QueryRelaxer:
                 filters.append("fresher = false")
 
         where_clause = "\nWHERE " + "\nAND ".join(filters) if filters else ""
-        return f"SELECT {RECRUITER_COLUMNS}\nFROM resumes{where_clause}\nLIMIT 200;"
+        return f"SELECT {RECRUITER_COLUMNS}\nFROM resumes{where_clause};"
 
     def _unique_skills(self, requirement: dict[str, Any]) -> list[str]:
         skills: list[str] = []

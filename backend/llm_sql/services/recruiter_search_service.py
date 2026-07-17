@@ -18,6 +18,7 @@ from backend.llm_sql.services.sql_validator import SQLValidationResult, SQLValid
 from backend.llm_sql.services.requirement_preprocessor import preprocess_requirement
 from backend.llm_sql.services.requirement_extractor import RequirementExtractor
 from backend.llm_sql.services.requirement_validator import RequirementValidator
+from backend.llm_sql.services.search_criteria import has_searchable_criteria
 from database.crud import create_search_history
 
 
@@ -100,6 +101,7 @@ class RecruiterSearchService:
         # 3. Stage 3: Skill Normalization
         t3_start = time.perf_counter()
         extracted_data = self.requirement_validator.validate_and_clean(raw_json)
+        no_searchable_criteria = not has_searchable_criteria(extracted_data)
         normalized_candidate_type = normalize_candidate_type(candidate_type)
         if normalized_candidate_type:
             extracted_data["candidate_type"] = normalized_candidate_type
@@ -152,10 +154,10 @@ class RecruiterSearchService:
                 logger.info("Fallback Stage 2: Relaxing locations. SQL: %s", relaxed_sql)
                 execution = self.executor.execute(relaxed_val)
                 
-            # Fallback 3: Return all candidates up to limit
+            # Fallback 3: Return all candidates.
             if execution.row_count == 0:
                 logger.info("Fallback Stage 2 returned 0 rows. Fallback Stage 3: Fetching all resumes...")
-                fallback_sql = f"SELECT {RECRUITER_COLUMNS}\nFROM resumes\nLIMIT {self.generator.builder.limit};"
+                fallback_sql = f"SELECT {RECRUITER_COLUMNS}\nFROM resumes;"
                 fallback_val = self.validator.validate(fallback_sql)
                 execution = self.executor.execute(fallback_val)
                 
@@ -196,6 +198,7 @@ class RecruiterSearchService:
         logger.info("Normalized Skills: %s", normalized_skills)
         logger.info("Generated SQL:\n%s", execution.generated_sql)
         logger.info("SQL Row Count: %d", execution.row_count)
+        logger.info("No searchable criteria: %s", no_searchable_criteria)
         logger.info("-" * 80)
         logger.info("Matched & Missing Skills per Candidate:")
         for idx, res in enumerate(results[:25]): # limit to top 25 to avoid log bloat
@@ -223,6 +226,7 @@ class RecruiterSearchService:
             results=results,
             model_used="Deterministic SQL Builder",
             requirement_analysis=extracted_data,
+            no_searchable_criteria=no_searchable_criteria,
             debug_report_path=debug.path,
             relaxation_attempts=[],
         )
@@ -294,6 +298,7 @@ class RecruiterSearchService:
                 ],
                 "execution_time_ms": response.execution_time_ms,
                 "model_used": response.model_used or SEARCH_MODEL_USED,
+                "no_searchable_criteria": response.no_searchable_criteria,
             }
         )
 

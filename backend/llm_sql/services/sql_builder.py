@@ -33,9 +33,8 @@ class SQLBuildResult:
 class SQLBuilder:
     """Build safe recruiter-search SQL from validated requirement JSON."""
 
-    def __init__(self, validator: SQLValidator | None = None, limit: int = 200, max_skills: int = 8) -> None:
+    def __init__(self, validator: SQLValidator | None = None, max_skills: int = 8) -> None:
         self.validator = validator or SQLValidator()
-        self.limit = min(max(int(limit), 1), 200)
         self.max_skills = max(int(max_skills), 1)
 
     def build(self, requirement: dict[str, Any]) -> SQLBuildResult:
@@ -76,7 +75,7 @@ class SQLBuilder:
             filters.append("fresher = false")
 
         where = "\nWHERE " + "\nAND ".join(filters) if filters else ""
-        return f"SELECT {RECRUITER_COLUMNS}\nFROM resumes{where}\nLIMIT {self.limit};"
+        return f"SELECT {RECRUITER_COLUMNS}\nFROM resumes{where};"
 
     def get_normalized_skills(self, requirement: dict[str, Any]) -> list[str]:
         skills: list[str] = []

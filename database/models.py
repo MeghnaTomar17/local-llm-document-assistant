@@ -106,6 +106,12 @@ class RecruiterSearchHistory(Base):
 
     model_used: Mapped[str] = mapped_column(Text, nullable=False)
 
+    no_searchable_criteria: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

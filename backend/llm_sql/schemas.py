@@ -52,6 +52,7 @@ class RecruiterSearchResponse(BaseModel):
     requirement_analysis: dict[str, Any] = Field(default_factory=dict)
     debug_report_path: str | None = None
     relaxation_attempts: list[dict[str, Any]] = Field(default_factory=list)
+    no_searchable_criteria: bool = False
 
 
 class RecruiterSearchHistoryItem(BaseModel):
@@ -65,4 +66,5 @@ class RecruiterSearchHistoryItem(BaseModel):
     results_snapshot: list[dict[str, Any]] = Field(default_factory=list)
     execution_time_ms: float | None = None
     model_used: str
+    no_searchable_criteria: bool = False
     created_at: datetime

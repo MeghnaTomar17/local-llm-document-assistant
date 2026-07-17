@@ -76,6 +76,7 @@ export function SearchPage() {
   }, [response?.results, classificationFilter]);
 
   const { page, pageCount, pageItems, setPage } = usePagination(filteredResults, 10);
+  const showSkillComparison = !response?.no_searchable_criteria;
 
   const columns: TableColumn<SearchResult>[] = [
     { key: "candidate", header: "Candidate", className: "col-candidate", render: (row) => String(row.candidate_name || row.original_file_name || "Unnamed") },
@@ -91,8 +92,10 @@ export function SearchPage() {
     },
     { key: "phone", header: "Phone", className: "col-phone", render: (row) => row.phone_number || "-" },
     { key: "skills", header: "Skills", className: "col-skills", render: (row) => <SkillChips value={row.skills} /> },
-    { key: "matched_skills", header: "Matched Skills", className: "col-matched-skills", render: (row) => <SkillChips value={row.matched_skills} customClass="skill-chip-matched" /> },
-    { key: "missing_skills", header: "Missing Skills", className: "col-missing-skills", render: (row) => <SkillChips value={row.missing_skills} customClass="skill-chip-missing" /> },
+    ...(showSkillComparison ? [
+      { key: "matched_skills", header: "Matched Skills", className: "col-matched-skills", render: (row: SearchResult) => <SkillChips value={row.matched_skills} customClass="skill-chip-matched" /> },
+      { key: "missing_skills", header: "Missing Skills", className: "col-missing-skills", render: (row: SearchResult) => <SkillChips value={row.missing_skills} customClass="skill-chip-missing" /> },
+    ] : []),
     { key: "type", header: "Experience", className: "col-experience", render: (row) => <Badge tone={row.fresher ? "info" : "success"}>{row.fresher ? "Fresher" : "Experienced"}</Badge> },
     { key: "verified", header: "Verified", className: "col-verified", render: (row) => <Badge tone={row.is_verified ? "success" : "warning"}>{row.is_verified ? "Yes" : "Review"}</Badge> },
     { key: "decision", header: "Decision", className: "col-decision", render: (row) => <DecisionBadge decision={row.hr_decision} /> },
@@ -151,6 +154,13 @@ export function SearchPage() {
       const responseData = await recruiterSearch(trimmed, null, "ALL", signal);
       setResponse(responseData);
       setPage(1);
+      if (responseData.no_searchable_criteria) {
+        setNotice(
+          classificationFilter === "ALL"
+            ? "No searchable skills or criteria were detected. Showing all candidate records."
+            : "No searchable skills or criteria were detected. Showing all candidates from the selected pool.",
+        );
+      }
       await loadHistory();
     } catch (err: any) {
       if (err.name !== "CanceledError" && err.name !== "AbortError" && err.message !== "canceled") {
@@ -176,6 +186,7 @@ export function SearchPage() {
       results: item.results_snapshot,
       model_used: item.model_used,
       requirement_analysis: {},
+      no_searchable_criteria: item.no_searchable_criteria || false,
     });
   }
 
