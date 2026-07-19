@@ -18,6 +18,7 @@ from backend.llm_sql.services.sql_validator import SQLValidationResult, SQLValid
 from backend.llm_sql.services.requirement_preprocessor import preprocess_requirement
 from backend.llm_sql.services.requirement_extractor import RequirementExtractor
 from backend.llm_sql.services.requirement_validator import RequirementValidator
+from backend.llm_sql.services.explicit_skill_recovery import recover_explicit_skills
 from backend.llm_sql.services.search_criteria import has_searchable_criteria
 from database.crud import create_search_history
 
@@ -101,6 +102,21 @@ class RecruiterSearchService:
         # 3. Stage 3: Skill Normalization
         t3_start = time.perf_counter()
         extracted_data = self.requirement_validator.validate_and_clean(raw_json)
+        llm_skills = self.generator.builder.get_normalized_skills(extracted_data) if hasattr(self.generator, "builder") else []
+        logger.info("LLM extracted skills: %s", llm_skills)
+        skill_expander = getattr(self.requirement_validator, "skill_expander", None)
+        if skill_expander:
+            extracted_data = skill_expander.normalize_requirement_skill_phrases(extracted_data)
+        normalized_llm_skills = self.generator.builder.get_normalized_skills(extracted_data) if hasattr(self.generator, "builder") else []
+        explicit_skills = recover_explicit_skills(question)
+        if explicit_skills and not normalized_llm_skills and skill_expander:
+            extracted_data = skill_expander.add_explicit_skills(
+                extracted_data,
+                explicit_skills,
+            )
+        logger.info("Explicit skill candidates: %s", explicit_skills)
+        final_skills = self.generator.builder.get_normalized_skills(extracted_data) if hasattr(self.generator, "builder") else []
+        logger.info("Final searchable skills: %s", final_skills)
         no_searchable_criteria = not has_searchable_criteria(extracted_data)
         normalized_candidate_type = normalize_candidate_type(candidate_type)
         if normalized_candidate_type:
@@ -153,13 +169,6 @@ class RecruiterSearchService:
                 relaxed_val = self.validator.validate(relaxed_sql)
                 logger.info("Fallback Stage 2: Relaxing locations. SQL: %s", relaxed_sql)
                 execution = self.executor.execute(relaxed_val)
-                
-            # Fallback 3: Return all candidates.
-            if execution.row_count == 0:
-                logger.info("Fallback Stage 2 returned 0 rows. Fallback Stage 3: Fetching all resumes...")
-                fallback_sql = f"SELECT {RECRUITER_COLUMNS}\nFROM resumes;"
-                fallback_val = self.validator.validate(fallback_sql)
-                execution = self.executor.execute(fallback_val)
                 
         t6_end = time.perf_counter()
         sql_execution_ms = (t6_end - t6_start) * 1000

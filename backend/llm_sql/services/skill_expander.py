@@ -39,6 +39,9 @@ GENERIC_SKILL_TERMS = {
     "research",
     "teamwork",
     "communication",
+    "good communication",
+    "communication skills",
+    "soft skills",
     "leadership",
     "ms office",
     "microsoft office",
@@ -79,7 +82,13 @@ class SkillExpander:
         all_entries = list(gis_entries) + list(general_entries)
 
         canonical = self.find_canonical_skill(value, all_entries)
-        return canonical or ""
+        if canonical:
+            return canonical
+
+        # Preserve clean unknown terms as exact canonical values. This keeps
+        # explicitly requested acronyms and proprietary technologies searchable
+        # without inventing aliases, while generic language remains excluded.
+        return value if self._is_unknown_skill_candidate(value) else ""
 
     def split_combined_skills(self, phrase: str) -> list[str]:
         p = phrase
@@ -183,6 +192,37 @@ class SkillExpander:
         expanded["expanded_skills"] = expanded_map
         return expanded
 
+    def add_explicit_skills(self, requirement: dict[str, Any], skills: list[str]) -> dict[str, Any]:
+        """Merge explicit recruiter terms, self-mapping terms unknown to the dictionaries."""
+        expanded = dict(requirement or {})
+        expanded_map = dict(expanded.get("expanded_skills") or {})
+        mandatory_skills = self._list(expanded.get("mandatory_skills"))
+        canonical_gis = self._list(expanded.get("gis_skills"))
+
+        for skill in skills:
+            clean = " ".join(str(skill or "").split())
+            if not clean:
+                continue
+            expanded_skill = self.expand_skill(clean) or ExpandedSkill(clean, (clean,))
+            mandatory_skills.append(expanded_skill.canonical)
+            expanded_map[expanded_skill.canonical] = self._unique(expanded_skill.aliases)
+            if expanded_skill.is_gis:
+                canonical_gis.append(expanded_skill.canonical)
+
+        expanded["mandatory_skills"] = self._unique(mandatory_skills)
+        expanded["gis_skills"] = self._unique(canonical_gis)
+        expanded["expanded_skills"] = expanded_map
+        return expanded
+
+    def normalize_requirement_skill_phrases(self, requirement: dict[str, Any]) -> dict[str, Any]:
+        """Remove only trailing recruiter intent words before rebuilding expansions."""
+        normalized = dict(requirement or {})
+        for field in SKILL_FIELDS:
+            normalized[field] = self._unique(
+                [self._strip_skill_intent(skill) for skill in self._list(normalized.get(field))]
+            )
+        return self.expand_requirement(normalized)
+
     def is_gis_skill(self, skill: str) -> bool:
         expanded = self.expand_skill(skill)
         return bool(expanded and expanded.is_gis)
@@ -238,3 +278,16 @@ class SkillExpander:
     def _is_generic(value: str) -> bool:
         key = " ".join(str(value or "").strip().lower().split())
         return key in GENERIC_SKILL_TERMS
+
+    @classmethod
+    def _is_unknown_skill_candidate(cls, value: str) -> bool:
+        clean = " ".join(str(value or "").split())
+        if not clean or len(clean) > 80 or len(clean.split()) > 5:
+            return False
+        if cls._is_generic(clean):
+            return False
+        return bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 .+#/_-]*", clean))
+
+    @staticmethod
+    def _strip_skill_intent(value: str) -> str:
+        return re.sub(r"\s+skills?\s*$", "", str(value or ""), flags=re.IGNORECASE).strip()
