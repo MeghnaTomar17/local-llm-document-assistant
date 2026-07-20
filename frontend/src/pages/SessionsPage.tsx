@@ -1,8 +1,10 @@
-import { Database, FileText, MapPin, MessageSquare, Search, Target, UserRound } from "lucide-react";
+import { Database, FileText, MapPin, MessageSquare, Search, Target, UploadCloud, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ResumeWorkspace } from "../components/resume/ResumeWorkspace";
 import { useAppData } from "../context/AppContext";
 import { getResume } from "../services/resumeApi";
+import { uploadResumes } from "../services/importApi";
+import { getApiError } from "../services/http";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Loader } from "../components/ui/Loader";
@@ -11,12 +13,15 @@ import { Table, type TableColumn } from "../components/ui/Table";
 import type { BulkImportStatus, RecruiterSession, ResumeDetail, ResumeListItem, UUID } from "../types";
 
 export function SessionsPage() {
-  const { sessions, activeSessionId, activeSessionResumes, busy, bulkImportStatus, sessionsLoaded, setNotice, updateResumeInState, handleSwitchSession } = useAppData();
+  const { sessions, activeSessionId, activeSessionResumes, busy, bulkImportStatus, sessionsLoaded, refresh, setNotice, updateResumeInState, handleSwitchSession } = useAppData();
   const [candidateSearch, setCandidateSearch] = useState("");
   const [selectedResume, setSelectedResume] = useState<ResumeDetail | null>(null);
   const [workspaceError, setWorkspaceError] = useState("");
   const [switchingSessionId, setSwitchingSessionId] = useState<UUID | null>(null);
   const [openingResumeId, setOpeningResumeId] = useState<UUID | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [classificationFilter, setClassificationFilter] = useState<"ALL" | "INTERNAL" | "EXTERNAL">(() => {
     return (localStorage.getItem("sessions_classification_filter") as "ALL" | "INTERNAL" | "EXTERNAL") || "ALL";
   });
@@ -95,6 +100,39 @@ export function SessionsPage() {
               </button>
             </div>
           </div>
+          <input
+            ref={uploadInputRef}
+            className="session-upload-input"
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            multiple
+            onChange={(event) => handleUpload(event.target.files)}
+          />
+          <button
+            type="button"
+            className={`session-upload-dropzone ${dragActive ? "is-dragging" : ""}`.trim()}
+            disabled={uploading || busy}
+            onClick={() => uploadInputRef.current?.click()}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              setDragActive(true);
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={(event) => {
+              event.preventDefault();
+              if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+              setDragActive(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragActive(false);
+              handleUpload(event.dataTransfer.files);
+            }}
+          >
+            <UploadCloud size={18} />
+            <span>{uploading ? "Processing resumes..." : "Drop resumes here or click to browse"}</span>
+            <small>PDF, DOCX</small>
+          </button>
           <div className="session-search">
             <Search size={17} />
             <input
@@ -189,6 +227,34 @@ export function SessionsPage() {
     }
   }
 
+  async function handleUpload(fileList: FileList | null) {
+    const files = Array.from(fileList || []);
+    if (!files.length || uploading) return;
+    if (files.some((file) => !isSupportedResume(file))) {
+      setNotice("Only PDF and DOCX resumes are supported.");
+      if (uploadInputRef.current) uploadInputRef.current.value = "";
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const response = await uploadResumes(files);
+      await refresh();
+      const uploadedCount = response.uploaded_documents?.length || 0;
+      const errorCount = response.errors?.length || 0;
+      setNotice(
+        errorCount
+          ? `${uploadedCount} resume(s) processed; ${errorCount} could not be processed.`
+          : response.message || `${uploadedCount} resume(s) uploaded successfully.`,
+      );
+    } catch (err) {
+      setNotice(`Upload failed: ${getApiError(err)}`);
+    } finally {
+      setUploading(false);
+      if (uploadInputRef.current) uploadInputRef.current.value = "";
+    }
+  }
+
   async function openResume(resumeId?: UUID | null) {
     if (!resumeId) return;
     setNotice("");
@@ -205,6 +271,10 @@ export function SessionsPage() {
       setWorkspaceRestoreStep("");
     }
   }
+}
+
+function isSupportedResume(file: File): boolean {
+  return [".pdf", ".docx"].some((extension) => file.name.toLowerCase().endsWith(extension));
 }
 
 function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onNotify: (msg: string) => void }) {
