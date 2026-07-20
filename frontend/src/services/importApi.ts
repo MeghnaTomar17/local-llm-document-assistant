@@ -8,8 +8,14 @@ export async function getBulkImportStatus(): Promise<BulkImportStatus> {
 
 export interface ResumeUploadBatchResponse {
   uploaded_documents?: Array<Record<string, unknown>>;
-  errors?: Array<Record<string, unknown>>;
+  errors?: ResumeUploadError[];
   message?: string;
+}
+
+export interface ResumeUploadError {
+  file_name?: string;
+  error?: string;
+  duplicate?: boolean;
 }
 
 export async function uploadResumes(files: File[]): Promise<ResumeUploadBatchResponse> {

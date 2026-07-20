@@ -12,6 +12,16 @@ import { SessionSkeletons, WorkspaceSkeleton } from "../components/ui/Skeleton";
 import { Table, type TableColumn } from "../components/ui/Table";
 import type { BulkImportStatus, RecruiterSession, ResumeDetail, ResumeListItem, UUID } from "../types";
 
+type SessionUploadProgress = {
+  total: number;
+  completed: number;
+  processed: number;
+  duplicates: number;
+  failed: number;
+  currentFile: string;
+  complete: boolean;
+};
+
 export function SessionsPage() {
   const { sessions, activeSessionId, activeSessionResumes, busy, bulkImportStatus, sessionsLoaded, refresh, setNotice, updateResumeInState, handleSwitchSession } = useAppData();
   const [candidateSearch, setCandidateSearch] = useState("");
@@ -21,6 +31,7 @@ export function SessionsPage() {
   const [openingResumeId, setOpeningResumeId] = useState<UUID | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<SessionUploadProgress | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [classificationFilter, setClassificationFilter] = useState<"ALL" | "INTERNAL" | "EXTERNAL">(() => {
     return (localStorage.getItem("sessions_classification_filter") as "ALL" | "INTERNAL" | "EXTERNAL") || "ALL";
@@ -108,31 +119,35 @@ export function SessionsPage() {
             multiple
             onChange={(event) => handleUpload(event.target.files)}
           />
-          <button
-            type="button"
-            className={`session-upload-dropzone ${dragActive ? "is-dragging" : ""}`.trim()}
-            disabled={uploading || busy}
-            onClick={() => uploadInputRef.current?.click()}
-            onDragEnter={(event) => {
-              event.preventDefault();
-              setDragActive(true);
-            }}
-            onDragOver={(event) => event.preventDefault()}
-            onDragLeave={(event) => {
-              event.preventDefault();
-              if (event.currentTarget.contains(event.relatedTarget as Node)) return;
-              setDragActive(false);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragActive(false);
-              handleUpload(event.dataTransfer.files);
-            }}
-          >
-            <UploadCloud size={18} />
-            <span>{uploading ? "Processing resumes..." : "Drop resumes here or click to browse"}</span>
-            <small>PDF, DOCX</small>
-          </button>
+          {uploadProgress ? (
+            <SessionUploadProgressPanel progress={uploadProgress} />
+          ) : (
+            <button
+              type="button"
+              className={`session-upload-dropzone ${dragActive ? "is-dragging" : ""}`.trim()}
+              disabled={uploading || busy}
+              onClick={() => uploadInputRef.current?.click()}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+                setDragActive(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragActive(false);
+                handleUpload(event.dataTransfer.files);
+              }}
+            >
+              <UploadCloud size={18} />
+              <span>Drop resumes here or click to browse</span>
+              <small>PDF, DOCX</small>
+            </button>
+          )}
           <div className="session-search">
             <Search size={17} />
             <input
@@ -237,21 +252,70 @@ export function SessionsPage() {
     }
 
     setUploading(true);
+    setUploadProgress({
+      total: files.length,
+      completed: 0,
+      processed: 0,
+      duplicates: 0,
+      failed: 0,
+      currentFile: files[0].name,
+      complete: false,
+    });
+
+    let processed = 0;
+    let duplicates = 0;
+    let failed = 0;
     try {
-      const response = await uploadResumes(files);
+      for (const [index, file] of files.entries()) {
+        setUploadProgress({
+          total: files.length,
+          completed: index,
+          processed,
+          duplicates,
+          failed,
+          currentFile: file.name,
+          complete: false,
+        });
+
+        try {
+          const response = await uploadResumes([file]);
+          if (response.uploaded_documents?.length) {
+            processed += 1;
+          } else if (response.errors?.some((error) => error.duplicate)) {
+            duplicates += 1;
+          } else {
+            failed += 1;
+          }
+        } catch {
+          failed += 1;
+        }
+
+        setUploadProgress({
+          total: files.length,
+          completed: index + 1,
+          processed,
+          duplicates,
+          failed,
+          currentFile: file.name,
+          complete: index + 1 === files.length,
+        });
+      }
+
       await refresh();
-      const uploadedCount = response.uploaded_documents?.length || 0;
-      const errorCount = response.errors?.length || 0;
-      setNotice(
-        errorCount
-          ? `${uploadedCount} resume(s) processed; ${errorCount} could not be processed.`
-          : response.message || `${uploadedCount} resume(s) uploaded successfully.`,
-      );
+      if (processed === 0 && duplicates === 0 && failed > 0) {
+        setNotice("Upload failed: No resumes could be processed.");
+      } else if (files.length === 1 && duplicates === 1) {
+        setNotice("Resume already exists. Duplicate upload skipped.");
+      } else {
+        setNotice(`${processed} processed · ${duplicates} duplicates skipped · ${failed} failed`);
+      }
     } catch (err) {
       setNotice(`Upload failed: ${getApiError(err)}`);
     } finally {
-      setUploading(false);
       if (uploadInputRef.current) uploadInputRef.current.value = "";
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 1400));
+      setUploadProgress(null);
+      setUploading(false);
     }
   }
 
@@ -275,6 +339,34 @@ export function SessionsPage() {
 
 function isSupportedResume(file: File): boolean {
   return [".pdf", ".docx"].some((extension) => file.name.toLowerCase().endsWith(extension));
+}
+
+function SessionUploadProgressPanel({ progress }: { progress: SessionUploadProgress }) {
+  const percentage = progress.total ? Math.round((progress.completed / progress.total) * 100) : 0;
+  const title = progress.complete
+    ? `${progress.processed} resumes processed`
+    : progress.total === 1
+      ? "Processing resume"
+      : "Processing resumes...";
+  const summary = progress.complete
+    ? `${progress.processed} processed · ${progress.duplicates} duplicates · ${progress.failed} failed`
+    : `Processing: ${progress.currentFile}`;
+
+  return (
+    <div className="session-upload-progress" aria-live="polite">
+      <div className="session-upload-progress-heading">
+        <strong>{title}</strong>
+        <span>{progress.completed} / {progress.total}</span>
+      </div>
+      <div className="progress-track" aria-label={`${percentage}% complete`}>
+        <div className={`progress-bar ${progress.complete ? "" : "is-live"}`.trim()} style={{ width: `${percentage}%` }} />
+      </div>
+      <div className="session-upload-progress-meta">
+        <span>{summary}</span>
+        <span>{percentage}%</span>
+      </div>
+    </div>
+  );
 }
 
 function ImportStatusPanel({ status, onNotify }: { status: BulkImportStatus; onNotify: (msg: string) => void }) {
