@@ -1200,6 +1200,12 @@ textarea {
   white-space: nowrap;
 }
 
+.global-resume-upload-progress {
+  width: min(420px, 100%);
+  margin: 0 0 14px auto;
+  box-shadow: 0 8px 20px rgba(23, 107, 106, 0.1);
+}
+
 .session-row {
   width: 100%;
   min-height: 145px;

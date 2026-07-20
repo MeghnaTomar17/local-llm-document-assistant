@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AppLayout, type PageKey } from "./components/layout/AppLayout";
 import { Loader } from "./components/ui/Loader";
 import { SkeletonBlock } from "./components/ui/Skeleton";
+import { ResumeUploadProgressPanel } from "./components/ui/ResumeUploadProgress";
 import { AppProvider, useAppData } from "./context/AppContext";
 import { DashboardPage } from "./pages/DashboardPage";
 import { SearchPage } from "./pages/SearchPage";
@@ -9,7 +10,7 @@ import { SessionsPage } from "./pages/SessionsPage";
 
 function AppContent() {
   const [page, setPage] = useState<PageKey>("dashboard");
-  const { loading, busy, error, notice, refresh, clearError, setNotice } = useAppData();
+  const { loading, busy, error, notice, refresh, clearError, setNotice, resumeUploadProgress } = useAppData();
 
   useEffect(() => {
     setNotice("");
@@ -48,6 +49,7 @@ function AppContent() {
           {notice}
         </button>
       )}
+      {page !== "sessions" && resumeUploadProgress && <ResumeUploadProgressPanel progress={resumeUploadProgress} global />}
       {page === "dashboard" && <DashboardPage />}
       {page === "sessions" && <SessionsPage />}
       {page === "search" && <SearchPage />}
